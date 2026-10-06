@@ -1,0 +1,27 @@
+[Unit]
+# 本项目由华南师范大学附属中学知识城校区高二一班同学制作
+# SPDX-License-Identifier: AGPL-3.0-or-later
+Description=SFTPC sgRNA Designer (CRISPOR + CHOPCHOP)
+Documentation=https://github.com/ZZC-jeizuchin/sftpc-gene-sgRNA-selection
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/ZZC-jeizuchin/sftpc-sgrna
+Environment=PYTHONUNBUFFERED=1
+# 只绑 127.0.0.1：由 nginx(443) 反代，不需要开任何防火墙端口
+ExecStart=/usr/bin/python3 /home/ZZC-jeizuchin/sftpc-sgrna/run_web.py 1146
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sftpc-sgrna
+
+# 一次查询要 20 秒 ~ 5 分钟（两个网站都要排队计算），给足停止时间
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
