@@ -168,3 +168,33 @@ SFTPC (NM_003018) 全部 6 个外显子编码区，含 c.218。直接粘进网�
 - [`负责人指示.md`](负责人指示.md) —— 负责人原话与实现对照
 - [`sgweb/README.md`](sgweb/README.md) —— 网页说明
 - `四个数据的定义.txt` —— 权重定义
+
+---
+
+## 作者与许可
+
+**本项目由华南师范大学附属中学知识城校区高二一班同学制作**
+
+Made by students of **Class 1, Grade 11**, *The Affiliated High School of SCNU, Knowledge City Campus*
+（华南师范大学附属中学知识城校区 高二一班）
+
+- **Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班**
+- **许可证：GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）** —— 全文见 [LICENSE](LICENSE)
+
+### 这意味着什么
+
+| 你可以 | 你必须 |
+|---|---|
+| ✅ 自由使用、修改、分发 | 📌 保留作者署名和版权声明 |
+| ✅ 用于商业用途 | 📌 衍生作品也必须用 AGPL-3.0 开源 |
+| ✅ 私有修改（自己用） | 📌 **如果你把它做成网络服务提供给别人用，必须公开完整源码** |
+
+> AGPL 比 GPL 严格的地方就在最后一条：**部署成在线服务也算"分发"**。
+> 这是因为本项目的形态就是一个网页服务（`run_web.py`）。
+
+### 引用
+
+如果你在论文、报告或比赛中引用本项目，建议写成：
+
+> 华南师范大学附属中学知识城校区高二一班. *SFTPC 基因 sgRNA 筛选工具*.
+> 2026. https://github.com/ZZC-jeizuchin/sftpc-gene-sgRNA-selection

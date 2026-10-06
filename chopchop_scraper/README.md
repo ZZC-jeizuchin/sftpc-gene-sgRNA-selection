@@ -174,3 +174,9 @@ chopchop_scraper/
 - CHOPCHOP 只搜到 **3 个错配**（`MM0`–`MM3`），比网站1 浅；它给的是脱靶**计数**，没有 CFD 分。
 - `Efficiency` 默认是 Doench 2016，和网站1 的 `Doench '16` **同源但实现不同**，数值不完全一样，别混用。
 - 以序列（`fastaInput`）提交时结果里仍会给基因组坐标（若序列能比中），但比不中就没有坐标。
+
+---
+
+> **本项目由华南师范大学附属中学知识城校区高二一班同学制作**
+> Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
+> Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班 · 许可证：[AGPL-3.0-or-later](LICENSE)

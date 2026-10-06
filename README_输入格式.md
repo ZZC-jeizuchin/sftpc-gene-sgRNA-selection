@@ -168,3 +168,9 @@ crispor_scraper/           网站1：Doench'16 / CFD / 距离
 run_chopchop.py            CHOPCHOP 入口
 chopchop_scraper/          网站2：距离
 ```
+
+---
+
+> **本项目由华南师范大学附属中学知识城校区高二一班同学制作**
+> Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
+> Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班 · 许可证：[AGPL-3.0-or-later](LICENSE)
