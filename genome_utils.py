@@ -73,7 +73,7 @@ DISTANCE_BANDS: list[tuple[float, float]] = [
 #
 # 两种约定算出的物理切点是同一个，实测 434 条 guide **分档结果完全一样**。
 # 换约定只需要改这一个常量。
-CUT_CONVENTION = "half"          # "half" 或 "int"
+CUT_CONVENTION = "int"           # "half" 或 "int"（负责人 2026-10-06 定：用 int）
 
 CUT_FROM_PAM_BY_CONVENTION = {
     "half": {"+": -3.5, "-": 5.5},

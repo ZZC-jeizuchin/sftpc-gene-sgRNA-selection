@@ -168,7 +168,7 @@
         <textarea id="seq" placeholder="粘贴一段基因组序列（ACGTN），例如 SFTPC exon 3 附近的一段" spellcheck="false"></textarea>
         <div class="hint">
           <span class="counter" id="counter">0 bp</span> ·
-          忽略大小写与空白 · CRISPOR 上限 2300 bp
+          忽略大小写与空白 · 上限 2300 bp
           <div id="estimate" style="margin-top:4px;color:#8b95a3"></div>
         </div>
       </div>
@@ -199,7 +199,7 @@
       </div>
 
       <div class="field">
-        <label for="target">目标位点（第三个数据的距离基准）</label>
+        <label for="target">目标位点（突变距离评分的基准）</label>
         <input type="number" id="target" value="22163096">
         <div class="hint">默认 22163096 = hg38 chr8，SFTPC <b>c.218</b> / I73T 位点</div>
       </div>
@@ -226,12 +226,13 @@
       </div>
 
       <div class="field">
-        <label for="thirdmode">第二部分第三项</label>
+        <label for="thirdmode">仅 CRISPOR 那批的突变距离评分</label>
         <select id="thirdmode">
-          <option value="auto" selected>能算就算，算不出用第一部分平均值（推荐）</option>
-          <option value="average">一律用第一部分平均值（负责人原话）</option>
+          <option value="auto" selected>能算就算，算不出用「两站都有」的平均值（推荐）</option>
+          <option value="average">一律用「两站都有」的平均值（负责人原话）</option>
           <option value="computed">只用真算值</option>
         </select>
+        <div class="hint">只影响「仅 CRISPOR」的 sgRNA（它们没有 CHOPCHOP 的数据）。</div>
       </div>
 
       <div class="field">
@@ -241,11 +242,11 @@
       </div>
 
       <div class="field">
-        <label>权重</label>
+        <label>权重比</label>
         <div class="weights">
           <div><b>7</b><span>Doench '16</span></div>
           <div><b>6</b><span>CFD Spec</span></div>
-          <div><b>4</b><span>距离</span></div>
+          <div><b>4</b><span>突变距离评分</span></div>
         </div>
       </div>
 
@@ -301,6 +302,8 @@ function colorSeq(s){
   return `<span class="seq">${paint(core)}<span class="pam">${paint(pam)}</span></span>`;
 }
 const fmt = (v, d = 2) => (v === null || v === undefined) ? '<span class="muted">—</span>' : Number(v).toFixed(d);
+/* 分数一律按 0-100 显示（内部算的是 0-1，只在这里 ×100） */
+const pts = (v, d = 2) => (v === null || v === undefined) ? '<span class="muted">—</span>' : (Number(v) * 100).toFixed(d);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- 日志 ---------- */
@@ -385,15 +388,15 @@ function render(d){
     <div class="stats">
       <div><b>${d.count}</b>候选 guide</div>
       <div><b>${d.sequence_length} bp</b>输入长度</div>
-      <div><b>${fmt(top?.final_score, 4)}</b>最高分</div>
+      <div><b>${pts(top?.final_score)}</b>最高分</div>
       <div><b>${rows.filter(r => r.distance !== null && r.distance < 20).length}</b>距目标 &lt;20 bp</div>
       <div><b>${d.distance_available ? '3 / 3' : '2 / 3'}</b>可用数据</div>
-      <div title="第一部分：CRISPOR 和 CHOPCHOP 都给出了这条 sgRNA">
-        <b>${(d.parts && d.parts.part1) ?? '—'}</b>第一部分</div>
-      <div title="第二部分：只有 CRISPOR 有，CHOPCHOP 没有">
-        <b>${(d.parts && d.parts.part2) ?? '—'}</b>第二部分</div>
-      <div title="第三部分：只有 CHOPCHOP 有，按负责人规则直接丢弃">
-        <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>第三部分(丢弃)</div>
+      <div title="【两站都有】CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA（= 负责人说的第一部分）">
+        <b>${(d.parts && d.parts.part1) ?? '—'}</b>两站都有</div>
+      <div title="【仅 CRISPOR】只有 CRISPOR 给出了这条 sgRNA，CHOPCHOP 没有给出（= 负责人说的第二部分）">
+        <b>${(d.parts && d.parts.part2) ?? '—'}</b>仅 CRISPOR</div>
+      <div title="【仅 CHOPCHOP】只有 CHOPCHOP 有、CRISPOR 没有，按负责人规则直接丢弃（= 负责人说的第三部分）">
+        <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>仅 CHOPCHOP(丢弃)</div>
       <div style="margin-left:auto;text-align:right">
         ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site} 原始结果 ↗</a>`).join('<br>')}
       </div>
@@ -407,12 +410,12 @@ function render(d){
     <div class="pick ${r.rank === 1 ? 'first' : ''}">
       <span class="rk">${r.rank === 1 ? '最佳' : 'No.' + r.rank}</span>
       <div class="sq">${colorSeq(r.sequence || '')}</div>
-      <div class="tot">${fmt(r.final_score, 4)}<small>/ 1.0000</small></div>
+      <div class="tot">${pts(r.final_score)}<small>/ 100</small></div>
       <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div>
       <div class="meta">
         <span>D16 ${fmt(r.doench16, 0)}</span>
         <span>CFD ${fmt(r.cfd_spec, 0)}</span>
-        <span>距离 ${r.distance === null ? '—' : Number(r.distance).toFixed(1) + 'bp'}</span>
+        <span>突变距离 ${r.distance === null ? '—' : Number(r.distance).toFixed(1) + 'bp'}</span>
         <span>${r.strand === 'fw' || r.strand === '+' ? '+' : '−'}</span>
         <span>${r.pam_start ?? ''}</span>
       </div>
@@ -450,33 +453,38 @@ function render(d){
              : (isTop ? `<span class="badge" style="background:#e8f7f1;color:#0d8a5f;border:1px solid #bfe7d7">Top ${r.rank}</span>` : '')
       }</td>`,
       `<td class="num">${r.strand === 'fw' || r.strand === '+' ? '+' : '−'}</td>`,
-      `<td class="num">${r.pam_start != null
-          ? r.pam_start
-          : `<span class="muted" title="没有基因组坐标，显示序列内位置">seq:${r.seq_pam_start ?? '—'}</span>`}</td>`,
-      `<td class="num">${fmt(r.doench16, 0)}<div class="muted" style="font-size:11px">${fmt(r.doench16_mapped, 3)}</div></td>`,
-      `<td class="num">${fmt(r.cfd_spec, 0)}<div class="muted" style="font-size:11px">${fmt(r.cfd_spec_normalized, 3)}</div></td>`,
+      `<td class="num">${r.guide_start != null
+          ? r.guide_start
+          : (r.seq_guide_start != null
+              ? `<span class="muted" title="没有基因组坐标，显示序列内位置">seq:${r.seq_guide_start}</span>`
+              : '<span class="muted">—</span>')}</td>`,
+      `<td class="num">${fmt(r.doench16, 0)}<div class="muted" style="font-size:11px">${pts(r.doench16_mapped)}</div></td>`,
+      `<td class="num">${fmt(r.cfd_spec, 0)}<div class="muted" style="font-size:11px">${pts(r.cfd_spec_normalized)}</div></td>`,
       `<td class="num">${r.distance === null || r.distance === undefined
           ? '<span class="muted">缺失</span>' : Number(r.distance).toFixed(1)}
          <div class="muted" style="font-size:11px">${r.third_base !== null && r.third_base !== undefined
-            ? '分档 ' + r.third_base + (r.third_bonus ? ' +' + r.third_bonus : '') : ''}</div></td>`,
+            ? '分档 ' + pts(r.third_base, 0) + (r.third_bonus ? ' +' + pts(r.third_bonus, 0) : '') : ''}</div></td>`,
       `<td class="num">${r.third_item === null || r.third_item === undefined
-          ? '<span class="muted">—</span>' : Number(r.third_item).toFixed(2)}</td>`,
-      `<td class="num scorecell"><span class="v">${fmt(r.final_score, 4)}</span>
+          ? '<span class="muted">—</span>' : pts(r.third_item)}</td>`,
+      `<td class="num scorecell"><span class="v">${pts(r.final_score)}</span>
          ${r.weight_used && r.weight_used !== d.total_weight
-            ? `<div class="muted" style="font-size:10.5px">权重 ${r.weight_used}/${d.total_weight}</div>` : ''}
+            ? `<div class="muted" style="font-size:10.5px">权重比 ${r.weight_used}/${d.total_weight}</div>` : ''}
          <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div></td>`,
+      // ---- sgRNA 来源（这条 guide 是哪个网站给的）----
+      `<td>${
+          r.part === 1
+            ? `<span class="tag" title="这条 sgRNA 由【两个网站共同给出】：CRISPOR 和 CHOPCHOP 都有。对应负责人说的「第一部分」。" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">两站都有</span>`
+            : (r.part === 2
+                ? `<span class="tag" title="这条 sgRNA【只有 CRISPOR 有，CHOPCHOP 没有给出】。对应负责人说的「第二部分」。" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">仅 CRISPOR</span>`
+                : '<span class="tag">—</span>')
+        }</td>`,
+      // ---- 突变距离评分的来源（这个分数是怎么来的）----
       `<td>${
           r.third_source === 'avg_part1'
-            ? '<span class="tag" title="自身切点算不出距离分，借用了第一部分第三项的平均值" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
+            ? '<span class="tag" title="这条 sgRNA 自身的切点算不出突变距离评分，借用了「两站都有」那批的平均值" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
             : (r.third_source === 'computed'
-                ? '<span class="tag" title="用这条 sgRNA 自己的切割位点真算出来的距离分" style="border-color:#bfe7d7;color:#0d8a5f;background:#e8f7f1">实算</span>'
-                : '<span class="tag" title="第三项缺失（滚木）">—</span>')
-        }${
-          r.part === 1
-            ? '<span class="tag" title="CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">第一部分</span>'
-            : (r.part === 2
-                ? '<span class="tag" title="只有 CRISPOR 有，CHOPCHOP 没有这条 sgRNA" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">第二部分</span>'
-                : '')
+                ? '<span class="tag" title="用这条 sgRNA 自己的切割位点真算出来的突变距离评分" style="border-color:#bfe7d7;color:#0d8a5f;background:#e8f7f1">实算</span>'
+                : '<span class="tag" title="突变距离评分缺失（滚木 null）">—</span>')
         }</td>`,
     ];
     const cls = best ? 'best' : (isTop ? 'topn' : '');
@@ -497,13 +505,15 @@ function render(d){
     <div style="overflow:auto; max-height:calc(100vh - 250px)">
       <table>
         <thead><tr>
-          <th>#</th><th>序列 (20 nt + PAM)</th><th class="num">链</th><th class="num">PAM 起点</th>
+          <th>#</th><th>序列 (20 nt + PAM)</th><th class="num">链</th>
+          <th class="num" title="sgRNA 的 5' 端在正链上的坐标（= 23mer 最左端，也就是 CHOPCHOP 网页上显示的 Genomic location）">sgRNA 起点</th>
           <th class="num">Doench '16<br><span style="font-weight:400;text-transform:none">×${w.doench16} 均匀映射</span></th>
           <th class="num">CFD Spec<br><span style="font-weight:400;text-transform:none">×${w.cfd_spec} ÷100</span></th>
-          <th class="num">距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
-          <th class="num">第三项<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档+奖励</span></th>
-          <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}</span></th>
-          <th title="左边=第三项分数怎么来的；右边=这条 sgRNA 属于第一部分还是第二部分">第三项来源</th>
+          <th class="num" title="切割位点到目标位点的碱基距离">突变距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
+          <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档+奖励</span></th>
+          <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}（满分 100）</span></th>
+          <th title="这条 sgRNA 是哪些网站给出的：两站都有 = CRISPOR 和 CHOPCHOP 都给出了；仅 CRISPOR = CHOPCHOP 没给出">sgRNA 来源</th>
+          <th title="突变距离评分是怎么来的：实算 = 用这条 sgRNA 自己的切点算的；平均值顶替 = 借用了「两站都有」那批的平均值">突变距离评分来源</th>
         </tr></thead>
         <tbody>${body}</tbody>
       </table>
