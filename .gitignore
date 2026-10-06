@@ -21,3 +21,7 @@ venv/
 crispor_out/
 chopchop_out/
 *.log
+
+# 含他人真实姓名/私人对话，仅保留在本地，不进公开仓库
+聊天记录3.txt
+负责人指示.md
