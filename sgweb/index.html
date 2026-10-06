@@ -388,11 +388,11 @@ function render(d){
       <div><b>${fmt(top?.final_score, 4)}</b>最高分</div>
       <div><b>${rows.filter(r => r.distance !== null && r.distance < 20).length}</b>距目标 &lt;20 bp</div>
       <div><b>${d.distance_available ? '3 / 3' : '2 / 3'}</b>可用数据</div>
-      <div title="两站都有的 sgRNA">
+      <div title="第一部分：CRISPOR 和 CHOPCHOP 都给出了这条 sgRNA">
         <b>${(d.parts && d.parts.part1) ?? '—'}</b>第一部分</div>
-      <div title="只有 CRISPOR 有">
+      <div title="第二部分：只有 CRISPOR 有，CHOPCHOP 没有">
         <b>${(d.parts && d.parts.part2) ?? '—'}</b>第二部分</div>
-      <div title="只有 CHOPCHOP 有，按规则已丢弃">
+      <div title="第三部分：只有 CHOPCHOP 有，按负责人规则直接丢弃">
         <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>第三部分(丢弃)</div>
       <div style="margin-left:auto;text-align:right">
         ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site} 原始结果 ↗</a>`).join('<br>')}
@@ -465,12 +465,19 @@ function render(d){
          ${r.weight_used && r.weight_used !== d.total_weight
             ? `<div class="muted" style="font-size:10.5px">权重 ${r.weight_used}/${d.total_weight}</div>` : ''}
          <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div></td>`,
-      `<td>${r.third_source === 'avg_part1'
-          ? '<span class="tag" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
-          : (r.third_source === 'computed'
-              ? '<span class="tag" style="border-color:#bfe7d7;color:#0d8a5f;background:#e8f7f1">实算</span>'
-              : '<span class="tag">—</span>')}
-         ${r.part === 1 ? '<span class="tag">第一部分</span>' : ''}</td>`,
+      `<td>${
+          r.third_source === 'avg_part1'
+            ? '<span class="tag" title="自身切点算不出距离分，借用了第一部分第三项的平均值" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
+            : (r.third_source === 'computed'
+                ? '<span class="tag" title="用这条 sgRNA 自己的切割位点真算出来的距离分" style="border-color:#bfe7d7;color:#0d8a5f;background:#e8f7f1">实算</span>'
+                : '<span class="tag" title="第三项缺失（滚木）">—</span>')
+        }${
+          r.part === 1
+            ? '<span class="tag" title="CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">第一部分</span>'
+            : (r.part === 2
+                ? '<span class="tag" title="只有 CRISPOR 有，CHOPCHOP 没有这条 sgRNA" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">第二部分</span>'
+                : '')
+        }</td>`,
     ];
     const cls = best ? 'best' : (isTop ? 'topn' : '');
     return `<tr class="${cls}">${parts.join('')}</tr>`;
@@ -496,7 +503,7 @@ function render(d){
           <th class="num">距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
           <th class="num">第三项<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档+奖励</span></th>
           <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}</span></th>
-          <th>第三项来源</th>
+          <th title="左边=第三项分数怎么来的；右边=这条 sgRNA 属于第一部分还是第二部分">第三项来源</th>
         </tr></thead>
         <tbody>${body}</tbody>
       </table>
