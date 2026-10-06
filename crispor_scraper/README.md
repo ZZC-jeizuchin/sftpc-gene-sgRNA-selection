@@ -191,3 +191,9 @@ JSON 输出会自动多出一个块，`--data` 也会自动认这个新 id。
 - 落在重复序列里的 guide，CRISPOR 会把 MIT / CFD 都置 0（不是抓取错误）。
 - `Doench '16` 在 CRISPOR 里是 `pam_audit=False`，非 NGG 的 guide 也给分，但模型没在那些 PAM 上验证过。
 - 全基因组脱靶只搜到 4 个错配；NGG guide 还会把 NAG/NGA PAM 的位点计入 ΣCFD。
+
+---
+
+> **本项目由华南师范大学附属中学知识城校区高二一班同学制作**
+> Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
+> Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班 · 许可证：[AGPL-3.0-or-later](LICENSE)

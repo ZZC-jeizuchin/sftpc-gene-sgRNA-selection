@@ -118,3 +118,9 @@ sgweb/aggregate.py     均匀映射 + 三数据加权 + 跨网站合并
 sgweb/index.html       前端（内嵌 CSS/JS，无外部依赖）
 genome_utils.py        坐标换算 / 序列定位（两个爬虫共用）
 ```
+
+---
+
+> **本项目由华南师范大学附属中学知识城校区高二一班同学制作**
+> Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
+> Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班 · 许可证：[AGPL-3.0-or-later](LICENSE)
