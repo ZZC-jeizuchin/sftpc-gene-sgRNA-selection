@@ -64,6 +64,10 @@ TOTAL_WEIGHT = sum(WEIGHTS.values())          # 17
 COVERAGE_BONUS = 0.1      # 压住目标点 → +
 COVERAGE_PENALTY = 0.1    # 没压住     → −
 THIRD_ITEM_CAP = 1.0
+# 下限取 0.1（= 分档表最低那一档），不是 0。
+# 原因：扣 0.1 不能把最差档（>200bp = 0.1）压到 0 —— 那样"超出范围"的会变成 0 分，
+# 而负责人要求它们保持 0.1。所以扣分只对 >=0.4 的那几档实际起作用。
+THIRD_ITEM_FLOOR = 0.1
 
 
 def uniform_map(values: list[float | None], higher_is_better: bool = True) -> list[float | None]:
@@ -152,7 +156,7 @@ def third_item_value(distance, pam_start, strand, target_pos,
     covered = covers_target(pam_start, strand, target_pos,
                             guide_start=guide_start, mode=window_mode)
     delta = bonus if covered else -penalty
-    val = max(0.0, min(THIRD_ITEM_CAP, base + delta))
+    val = max(THIRD_ITEM_FLOOR, min(THIRD_ITEM_CAP, base + delta))
     return round(val, 6), base, round(delta, 6)
 
 
