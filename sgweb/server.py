@@ -133,7 +133,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
 
     parts = merged.get("parts", {})
 
-    # ---- 滚木：第一部分为空 ----
+    # ---- 滚木：「两站都有」那批为空 ----
     if merged.get("kurumi"):
         merged.setdefault("warnings", []).append(
             "**滚木(null)** —— " + (merged.get("kurumi_note") or
@@ -158,12 +158,12 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         n_avg = sum(1 for r in merged["rows"] if r.get("third_source") == "avg_part1")
         if n_avg:
             if third_mode == "average":
-                why = "按负责人规则（第二部分一律用第一部分平均值）"
+                why = "按负责人规则（仅 CRISPOR 那批一律用「两站都有」的平均值）"
             else:
                 why = "这些 guide 两个网站上对不上、算不出切点"
             merged.setdefault("notes", []).append(
-                f"第二部分有 {n_avg} 条{why}，第三项用第一部分的平均值 "
-                f"({merged['avg_part1_third']}) 顶替。"
+                f"「仅 CRISPOR」有 {n_avg} 条{why}，突变距离评分用"
+                f"「两站都有」那批的平均值 ({merged['avg_part1_third']}) 顶替。"
             )
 
     merged["elapsed_sec"] = round(time.time() - t0, 1)

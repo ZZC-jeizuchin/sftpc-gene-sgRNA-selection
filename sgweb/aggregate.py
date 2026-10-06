@@ -160,11 +160,23 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         c = cri.get(key, {})
         h = cho.get(key, {})
         src = c or h
+        p = c.get("pam_start") if c.get("pam_start") is not None else h.get("pam_start")
+        seqp = c.get("seq_pam_start") if c.get("seq_pam_start") is not None else h.get("seq_pam_start")
+        st = normalize_strand(src.get("strand"))
+        # sgRNA 起点 = 23mer 在正链上的最左端（= CHOPCHOP 网页上显示的 Genomic location）
+        #   + 链：PAM 在右端，spacer 起点 = PAM起点 − 20
+        #   − 链：PAM 在左端，起点就是 PAM 起点
+        def gstart(pam):
+            if pam is None:
+                return None
+            return pam - 20 if st == "+" else (pam if st == "-" else None)
         return {
             "key": key,
             "part": kind,                       # 1 / 2
-            "pam_start": c.get("pam_start") if c.get("pam_start") is not None else h.get("pam_start"),
-            "seq_pam_start": c.get("seq_pam_start") if c.get("seq_pam_start") is not None else h.get("seq_pam_start"),
+            "pam_start": p,
+            "seq_pam_start": seqp,
+            "guide_start": gstart(p),
+            "seq_guide_start": seqp - 20 if (seqp is not None and st == "+") else seqp,
             "strand": src.get("strand"),
             "sequence": src.get("target_seq"),
             "spacer": spacer_of(src.get("target_seq")),
@@ -216,8 +228,9 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         for r in all_rows:
             r["third_item"] = None
             r["third_source"] = None
-        note = ("两个网站没有找到任何共同的 sgRNA（第一部分为空）→ 第三项 = 滚木(null)。"
-                "请确认输入的这条基因是否过于变异，或者根本不是目标基因。")
+        note = ("两个网站没有找到任何共同的 sgRNA（「两站都有」那批为空）→ "
+                "突变距离评分 = 滚木(null)。请确认输入的这条基因是否过于变异，"
+                "或者根本不是目标基因。")
     else:
         note = None
 
