@@ -93,13 +93,27 @@ def spacer_of(target_seq: str | None) -> str | None:
     return s[:20] if len(s) >= 20 else None
 
 
-def covers_target(pam_start, strand, target_pos: int) -> bool:
-    """guide 的 20nt spacer 区间是否压住目标点。
+# 覆盖奖励用哪个窗口来判断「压住了目标点」：
+#   "guide_start"（默认，负责人 2026-10-06 指定）
+#         X = sgRNA 起点（= CHOPCHOP 网页上 chr8 后面那个数字）
+#         条件：X <= 目标点 <= X+20
+#   "spacer"（原来的做法）
+#         用 20nt spacer 区间；正链 [pam-20, pam-1]，反链 [pam+3, pam+22]
+COVERAGE_WINDOW = "guide_start"
 
-    pam_start = PAM 区间在正链上的左端（基因组坐标）
-      + 链: spacer 在 [pam_start-20, pam_start-1]
-      - 链: spacer 在 [pam_start+3,  pam_start+22]
+
+def covers_target(pam_start, strand, target_pos: int,
+                  guide_start=None, mode: str = COVERAGE_WINDOW) -> bool:
+    """guide 的 20nt 区间有没有压住目标点。
+
+    mode="guide_start"：X <= target <= X+20，X = sgRNA 起点
+    mode="spacer"     ：20nt spacer 区间（正链 [pam-20,pam-1]，反链 [pam+3,pam+22]）
     """
+    if mode == "guide_start":
+        if guide_start is None:
+            return False
+        return guide_start <= target_pos <= guide_start + 20
+
     if pam_start is None:
         return False
     s = normalize_strand(strand)
@@ -113,12 +127,14 @@ def covers_target(pam_start, strand, target_pos: int) -> bool:
 
 
 def third_item_value(distance, pam_start, strand, target_pos,
-                     bonus: float = COVERAGE_BONUS):
+                     guide_start=None, bonus: float = COVERAGE_BONUS,
+                     window_mode: str = COVERAGE_WINDOW):
     """第三项 = 距离分档 + 覆盖奖励（上限 1.0）。返回 (分值, 分档分, 奖励)。"""
     base = distance_band_score(distance)
     if base is None:
         return None, None, None
-    extra = bonus if covers_target(pam_start, strand, target_pos) else 0.0
+    extra = bonus if covers_target(pam_start, strand, target_pos,
+                                   guide_start=guide_start, mode=window_mode) else 0.0
     val = min(THIRD_ITEM_CAP, base + extra)
     return round(val, 6), base, round(extra, 6)
 
@@ -196,7 +212,8 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     # ---------------------------------------------------------- 4. 第三项
     # 第一部分：分档 + 覆盖奖励
     for r in rows1:
-        v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos)
+        v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos,
+                                              guide_start=r["guide_start"])
         r["third_base"], r["third_bonus"] = base, extra
         r["third_item_raw"] = v
         r["third_item"] = v
@@ -208,7 +225,8 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
 
     # 第二部分：能真算就真算，否则用第一部分平均值（按 third_mode）
     for r in rows2:
-        v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos)
+        v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos,
+                                              guide_start=r["guide_start"])
         r["third_base"], r["third_bonus"] = base, extra
         r["third_item_raw"] = v
         r["third_computed"] = v
