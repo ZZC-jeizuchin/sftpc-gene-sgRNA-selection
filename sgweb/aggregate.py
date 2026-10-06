@@ -51,8 +51,18 @@ from genome_utils import (
 WEIGHTS = {"doench16": 7, "cfd_spec": 6, "distance": 4}
 TOTAL_WEIGHT = sum(WEIGHTS.values())          # 17
 
-# 覆盖奖励：guide 的 20nt 区间压住目标点 → 第三项 +0.1（负责人要求，上限 1.0）
-COVERAGE_BONUS = 0.1
+# 覆盖奖励（负责人 2026-10-06 最终定版）：
+#   guide 的 20nt 区间压住目标点 (X <= 目标 <= X+20) → 第三项 +0.1
+#   没压住                                        → 第三项 −0.1
+#   第三项上限 1.0，下限 0.0
+#
+# 【为什么必须要有那个 −0.1】：
+#   切点永远在 [X, X+20] 这个窗口内部（正链偏移 17，反链偏移 6），
+#   所以"压住目标"必然意味着切点距离 < 20bp → 分档本来就是 1.0。
+#   如果只加不减，1.0+0.1 会被上限 1.0 吃掉，加分永远是废的。
+#   加上 −0.1 之后：压住的 = 1.0，没压住的 = 0.9，两者才真正分开。
+COVERAGE_BONUS = 0.1      # 压住目标点 → +
+COVERAGE_PENALTY = 0.1    # 没压住     → −
 THIRD_ITEM_CAP = 1.0
 
 
@@ -128,15 +138,22 @@ def covers_target(pam_start, strand, target_pos: int,
 
 def third_item_value(distance, pam_start, strand, target_pos,
                      guide_start=None, bonus: float = COVERAGE_BONUS,
+                     penalty: float = COVERAGE_PENALTY,
                      window_mode: str = COVERAGE_WINDOW):
-    """第三项 = 距离分档 + 覆盖奖励（上限 1.0）。返回 (分值, 分档分, 奖励)。"""
+    """第三项 = 距离分档 + 覆盖奖励。
+
+    压住目标点 → +bonus；没压住 → −penalty。
+    最后夹在 [0, 1] 之间（负责人要求「不超过 1」）。
+    返回 (最终分, 分档分, 加减分)。
+    """
     base = distance_band_score(distance)
     if base is None:
         return None, None, None
-    extra = bonus if covers_target(pam_start, strand, target_pos,
-                                   guide_start=guide_start, mode=window_mode) else 0.0
-    val = min(THIRD_ITEM_CAP, base + extra)
-    return round(val, 6), base, round(extra, 6)
+    covered = covers_target(pam_start, strand, target_pos,
+                            guide_start=guide_start, mode=window_mode)
+    delta = bonus if covered else -penalty
+    val = max(0.0, min(THIRD_ITEM_CAP, base + delta))
+    return round(val, 6), base, round(delta, 6)
 
 
 def merge(crispor_payload: dict | None, chopchop_payload: dict | None,

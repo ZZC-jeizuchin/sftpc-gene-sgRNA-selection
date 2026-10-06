@@ -463,7 +463,8 @@ function render(d){
       `<td class="num">${r.distance === null || r.distance === undefined
           ? '<span class="muted">缺失</span>' : Number(r.distance).toFixed(1)}
          <div class="muted" style="font-size:11px">${r.third_base !== null && r.third_base !== undefined
-            ? '分档 ' + pts(r.third_base, 0) + (r.third_bonus ? ' +' + pts(r.third_bonus, 0) : '') : ''}</div></td>`,
+            ? '分档 ' + pts(r.third_base, 0) + (r.third_bonus
+                ? ' ' + (r.third_bonus > 0 ? '+' : '−') + pts(Math.abs(r.third_bonus), 0) : '') : ''}</div></td>`,
       `<td class="num">${r.third_item === null || r.third_item === undefined
           ? '<span class="muted">—</span>' : pts(r.third_item)}</td>`,
       `<td class="num scorecell"><span class="v">${pts(r.final_score)}</span>
@@ -510,7 +511,7 @@ function render(d){
           <th class="num">Doench '16<br><span style="font-weight:400;text-transform:none">×${w.doench16} 均匀映射</span></th>
           <th class="num">CFD Spec<br><span style="font-weight:400;text-transform:none">×${w.cfd_spec} ÷100</span></th>
           <th class="num" title="切割位点到目标位点的碱基距离">突变距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
-          <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档+奖励</span></th>
+          <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档±覆盖</span></th>
           <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}（满分 100）</span></th>
           <th title="这条 sgRNA 是哪些网站给出的：两站都有 = CRISPOR 和 CHOPCHOP 都给出了；仅 CRISPOR = CHOPCHOP 没给出">sgRNA 来源</th>
           <th title="突变距离评分是怎么来的：实算 = 用这条 sgRNA 自己的切点算的；平均值顶替 = 借用了「两站都有」那批的平均值">突变距离评分来源</th>
