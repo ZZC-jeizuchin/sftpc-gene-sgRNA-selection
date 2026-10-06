@@ -1,0 +1,76 @@
+三、系统架构设计
+3.1 总体架构
+采用B/S（浏览器/服务器）三层架构：
+
+前端交互层：HTML5/CSS3/JavaScript构建响应式界面，支持基因输入、参数配置和结果可视化展示
+
+业务逻辑层：Python Flask（或FastAPI）框架处理参数验证、任务调度和API接口
+
+计算引擎层：整合sgRNA评分算法和脱靶预测引擎，使用SQLite存储基因组索引和缓存数据
+
+参考CRISPR-BEasy的成功经验，该平台基于Cloudgene架构，将sgRNA设计（crisprVerse）与on/off-target评分（CFD和RS3）集成在统一的Web服务中。
+
+3.2 数据流设计
+text
+用户输入（SFTPC突变类型 + 目标区域）
+        ↓
+[Step 1] 基因组序列提取（从Ensembl/NCBI获取SFTPC参考序列）
+        ↓
+[Step 2] 突变序列生成（根据用户输入的突变类型生成突变型序列）
+        ↓
+[Step 3] 候选sgRNA枚举（扫描NGG PAM，提取20nt spacer）
+        ↓
+[Step 4] 多平台数据整合（可选：从CRISPOR/CHOPCHOP导入已有sgRNA列表）
+        ↓
+[Step 5] 三维度评分（On-target效率 + Off-target特异性 + 突变背景适配）
+        ↓
+[Step 6] 综合排名与可视化输出
+3.3 核心技术组件
+组件	技术方案	说明
+Web框架	Flask/FastAPI	Python后端，轻量且生态丰富
+基因组数据	Ensembl REST API + pyfaidx	动态获取序列，本地缓存FASTA
+On-target评分	Azimuth(Rule Set 2) + DeepHF	调用crisprScore或预训练模型
+Off-target搜索	Bowtie2/Cas-OFFinder	全基因组比对，允许≤3错配
+CFD评分	自实现或调用crisprScore	基于Doench 2016的错配权重矩阵
+前端可视化	Plotly/D3.js	交互式图表，sgRNA在基因上的位置展示
+数据存储	SQLite + Redis	基因组索引持久化 + 计算缓存加速
+四、前端功能设计
+4.1 用户操作流程
+第一步：基因与突变输入
+
+文本框输入目标基因名称（SFTPC）或直接粘贴基因序列
+
+下拉菜单选择突变类型（支持常见SFTPC突变如I73T、E66K、Δ91-93等，或手动输入自定义突变）
+
+可选：上传来自CRISPOR/CHOPCHOP/Benchling的候选sgRNA列表（CSV格式）
+
+第二步：参数配置（专家模式）
+
+核酸酶选择：SpCas9（默认）/ SaCas9 / Cas12a
+
+PAM类型选择：NGG（默认）/ NAG / NGA
+
+评分权重滑块：允许用户自定义三个模块的权重
+
+过滤阈值：GC含量范围、最大脱靶数、最小特异性分数
+
+第三步：结果展示
+
+排名表格：展示Top sgRNA及其综合评分、各子分数、序列、PAM、基因组位置
+
+基因位置图：在SFTPC基因结构图上标注各sgRNA的切割位置，颜色表示评分高低
+
+散点图：On-target效率 vs. Off-target特异性二维散点图，直观展示候选sgRNA的分布
+
+详情面板：点击某条sgRNA，展开显示脱靶位点列表、序列比对、评分雷达图
+
+导出功能：支持CSV/JSON格式导出排序结果
+
+4.2 交互设计参考
+参考已有的CRISPR设计工具界面，采用实验室仪器风格的美学设计：
+
+DNA碱基颜色编码：A=绿色，T=红色，C=蓝色，G=黄色
+
+PAM位点用加粗红色高亮
+
+使用等宽字体展示序列，确保碱基对齐可读

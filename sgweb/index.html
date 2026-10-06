@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sgRNA 设计 · SFTPC</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --line:#e3e6ea; --line2:#eef1f4;
+    --ink:#16191d; --ink2:#5b6472; --ink3:#8b95a3;
+    --accent:#2f5bea; --accent-soft:#eef2ff;
+    --best:#0d8a5f; --best-soft:#e8f7f1;
+    --warn:#b45309; --warn-soft:#fff7ed;
+    --mono:"SF Mono",SFMono-Regular,ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    background:var(--panel); border-bottom:1px solid var(--line);
+    padding:14px 24px; display:flex; align-items:baseline; gap:14px;
+    position:sticky; top:0; z-index:10;
+  }
+  header h1{font-size:15px; font-weight:650; margin:0; letter-spacing:.2px}
+  header .sub{font-size:12.5px; color:var(--ink3)}
+  header .spacer{flex:1}
+  header .pill{
+    font-size:11.5px; color:var(--ink2); background:var(--bg);
+    border:1px solid var(--line); border-radius:999px; padding:3px 10px;
+  }
+  main{display:grid; grid-template-columns:340px minmax(0,1fr); gap:18px; padding:18px 24px 40px; align-items:start}
+  @media(max-width:980px){main{grid-template-columns:1fr}}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px}
+  .card h2{
+    font-size:12px; text-transform:uppercase; letter-spacing:.8px; color:var(--ink3);
+    margin:0; padding:13px 16px; border-bottom:1px solid var(--line2); font-weight:600;
+  }
+  .card .body{padding:16px}
+
+  label{display:block; font-size:12.5px; font-weight:600; color:var(--ink2); margin:0 0 6px}
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  textarea,select,input[type=number],input[type=text]{
+    width:100%; border:1px solid var(--line); border-radius:7px; padding:9px 11px;
+    font-size:13px; background:#fff; color:var(--ink); outline:none;
+    transition:border-color .12s,box-shadow .12s;
+  }
+  textarea{font-family:var(--mono); font-size:12.5px; line-height:1.65; resize:vertical; min-height:112px; word-break:break-all}
+  textarea:focus,select:focus,input:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .hint{font-size:11.5px; color:var(--ink3); margin-top:6px; line-height:1.5}
+  .counter{font-size:11.5px; color:var(--ink3); font-variant-numeric:tabular-nums}
+
+  button{
+    width:100%; border:0; border-radius:7px; padding:11px; font-size:13.5px; font-weight:600;
+    background:var(--accent); color:#fff; cursor:pointer; transition:background .12s,opacity .12s;
+  }
+  button:hover:not(:disabled){background:#2549c4}
+  button:disabled{opacity:.55; cursor:default}
+  button.ghost{background:#fff; color:var(--ink2); border:1px solid var(--line); font-weight:500; padding:8px}
+  button.ghost:hover:not(:disabled){background:var(--bg); color:var(--ink)}
+
+  .weights{display:flex; gap:8px; margin-top:2px}
+  .weights div{flex:1; background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; text-align:center}
+  .weights b{display:block; font-size:16px; color:var(--ink)}
+  .weights span{font-size:10.5px; color:var(--ink3); letter-spacing:.3px}
+
+  .status{margin-top:12px; font-size:12.5px; line-height:1.6}
+  .status .line{display:flex; gap:8px; align-items:flex-start; padding:3px 0; color:var(--ink2)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ink3);flex:none;margin-top:6px}
+  .dot.run{background:var(--accent); animation:blink 1s infinite}
+  .dot.ok{background:var(--best)} .dot.err{background:#dc2626}
+  @keyframes blink{50%{opacity:.25}}
+
+  .empty{padding:70px 20px; text-align:center; color:var(--ink3); font-size:13.5px}
+  .empty .big{font-size:34px; margin-bottom:12px; opacity:.35}
+
+  .stats{display:flex; gap:22px; padding:14px 16px; border-bottom:1px solid var(--line2); flex-wrap:wrap}
+  .stats div{font-size:12px; color:var(--ink3)}
+  .stats b{display:block; font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums; font-weight:650}
+  .stats a{color:var(--accent); text-decoration:none; font-size:12px}
+  .stats a:hover{text-decoration:underline}
+
+  .warnbar{margin:0; padding:11px 16px; background:var(--warn-soft); color:var(--warn);
+           font-size:12.5px; border-bottom:1px solid #fde3c7; line-height:1.6}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px}
+  thead th{
+    position:sticky; top:0; background:#fbfcfd; z-index:5;
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--ink3); font-weight:600; padding:9px 10px; border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  thead th.num{text-align:right}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--line2); vertical-align:middle}
+  tbody tr:hover{background:#fafbfe}
+  tbody tr.best{background:var(--best-soft)}
+  tbody tr.best:hover{background:#dcf2ea}
+  tbody tr.topn{background:#f5fbf9}
+  tbody tr.topn:hover{background:#eef8f4}
+  td.num{text-align:right; font-variant-numeric:tabular-nums; font-family:var(--mono); font-size:12px}
+  td.rank{color:var(--ink3); font-variant-numeric:tabular-nums; width:44px}
+  td.rank b{color:var(--ink); font-size:14px}
+  .seq{font-family:var(--mono); font-size:12.5px; letter-spacing:.4px; white-space:nowrap}
+  .seq .pam{font-weight:700; text-decoration:underline; text-underline-offset:2px}
+  .b-A{color:#0f8a3d} .b-T{color:#d1332e} .b-C{color:#1e5fd0} .b-G{color:#b8860b}
+  .badge{display:inline-block; font-size:10px; font-weight:700; letter-spacing:.4px;
+         padding:2px 7px; border-radius:5px; background:var(--best); color:#fff; vertical-align:1px}
+  .tag{font-size:10.5px; padding:1px 6px; border-radius:4px; background:var(--bg);
+       border:1px solid var(--line); color:var(--ink3)}
+  .bar{height:5px; border-radius:3px; background:var(--line2); overflow:hidden; margin-top:4px; min-width:64px}
+  .bar i{display:block; height:100%; background:var(--accent)}
+  tr.best .bar i{background:var(--best)}
+  .muted{color:var(--ink3)}
+  .scorecell{min-width:104px}
+
+  /* ---- 推荐候选 ---- */
+  .picks{padding:14px 16px; border-bottom:1px solid var(--line2); background:#fbfdfc}
+  .picks .head{display:flex; align-items:center; gap:10px; margin-bottom:11px}
+  .picks .head h3{margin:0; font-size:12px; letter-spacing:.7px; text-transform:uppercase; color:var(--best); font-weight:700}
+  .picks .head .n{font-size:12px; color:var(--ink3)}
+  .picks .head input{width:54px; padding:4px 7px; font-size:12px; text-align:center}
+  .pickgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(224px,1fr)); gap:10px}
+  .pick{background:#fff; border:1px solid var(--line); border-radius:9px; padding:11px 12px; position:relative;
+        border-top:3px solid var(--best)}
+  .pick.first{border-top-color:#0a6e4c; box-shadow:0 1px 0 rgba(13,138,95,.12)}
+  .pick .rk{position:absolute; top:9px; right:11px; font-size:10.5px; font-weight:700; color:var(--best);
+            background:var(--best-soft); border-radius:5px; padding:1px 7px}
+  .pick .sq{font-family:var(--mono); font-size:12px; letter-spacing:.3px; margin:2px 0 8px; word-break:break-all}
+  .pick .tot{font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1}
+  .pick .tot small{font-size:11px; font-weight:500; color:var(--ink3); margin-left:4px}
+  .pick .meta{font-size:11px; color:var(--ink3); margin-top:6px; display:flex; gap:9px; flex-wrap:wrap;
+              font-variant-numeric:tabular-nums}
+  .pick .bar{margin-top:7px}
+  .scorecell .v{font-weight:650; font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header>
+  <h1>sgRNA 设计</h1>
+  <span class="sub">CRISPOR + CHOPCHOP · 三数据加权排序</span>
+  <span class="spacer"></span>
+  <span class="pill" id="pill">就绪</span>
+</header>
+
+<main>
+  <!-- ================= 输入 ================= -->
+  <section class="card">
+    <h2>输入</h2>
+    <div class="body">
+      <div class="field">
+        <label for="seq">碱基序列</label>
+        <textarea id="seq" placeholder="粘贴一段基因组序列（ACGTN），例如 SFTPC exon 3 附近的一段" spellcheck="false"></textarea>
+        <div class="hint">
+          <span class="counter" id="counter">0 bp</span> ·
+          忽略大小写与空白 · CRISPOR 上限 2300 bp
+          <div id="estimate" style="margin-top:4px;color:#8b95a3"></div>
+        </div>
+      </div>
+
+      <div class="field row">
+        <div>
+          <label for="genome">数据库 / 基因组</label>
+          <select id="genome">
+            <option value="hg38" selected>hg38 (GRCh38)</option>
+            <option value="hg19">hg19 (GRCh37)</option>
+            <option value="mm39">mm39 (小鼠)</option>
+            <option value="mm10">mm10 (小鼠)</option>
+            <option value="danRer11">danRer11 (斑马鱼)</option>
+            <option value="dm6">dm6 (果蝇)</option>
+            <option value="ce11">ce11 (线虫)</option>
+            <option value="SacCer3">SacCer3 (酵母)</option>
+          </select>
+        </div>
+        <div>
+          <label for="pam">PAM</label>
+          <select id="pam">
+            <option value="NGG" selected>NGG (SpCas9)</option>
+            <option value="NAG">NAG</option>
+            <option value="NGA">NGA</option>
+            <option value="NNGT">NNGT (S. canis)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="target">目标位点（第三个数据的距离基准）</label>
+        <input type="number" id="target" value="22163096">
+        <div class="hint">默认 22163096 = hg38 chr8，SFTPC <b>c.218</b> / I73T 位点</div>
+      </div>
+
+      <div class="field row">
+        <div>
+          <label for="goff">序列基因组起点</label>
+          <input type="text" id="goff" placeholder="自动">
+        </div>
+        <div>
+          <label for="gchrom">染色体</label>
+          <input type="text" id="gchrom" placeholder="chr8">
+        </div>
+        <div style="grid-column:1/-1" class="hint">
+          留空 = 自动在 SFTPC 基因座内查找。序列来自别处时，
+          填上它在基因组上的 <b>0-based 起始坐标</b>（如 chr8 的 22162800）。
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="locwin">定位窗口 <span class="muted" style="font-weight:400">(换基因时改这里)</span></label>
+        <input type="text" id="locwin" placeholder="chr8:22150000-22170000">
+        <div class="hint">留空 = 默认 SFTPC 基因座。序列来自别的基因时填它的区间，秒级定位。</div>
+      </div>
+
+      <div class="field">
+        <label for="thirdmode">第二部分第三项</label>
+        <select id="thirdmode">
+          <option value="auto" selected>能算就算，算不出用第一部分平均值（推荐）</option>
+          <option value="average">一律用第一部分平均值（负责人原话）</option>
+          <option value="computed">只用真算值</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="topn">推荐候选条数</label>
+        <input type="number" id="topn" value="5" min="1" max="50">
+        <div class="hint">分数最高的前 N 条会单独列出并高亮</div>
+      </div>
+
+      <div class="field">
+        <label>权重</label>
+        <div class="weights">
+          <div><b>7</b><span>Doench '16</span></div>
+          <div><b>6</b><span>CFD Spec</span></div>
+          <div><b>4</b><span>距离</span></div>
+        </div>
+      </div>
+
+      <button id="run">开始分析</button>
+      <button class="ghost" id="sample" style="margin-top:8px">填入示例序列</button>
+
+      <div class="status" id="status"></div>
+    </div>
+  </section>
+
+  <!-- ================= 结果 ================= -->
+  <section class="card" id="resultCard">
+    <h2>加权结果</h2>
+    <div id="result">
+      <div class="empty">
+        <div class="big">⌬</div>
+        填写序列后点击「开始分析」<br>
+        <span style="font-size:12px">首次查询约 20–40 秒（两个网站都要排队计算），之后走缓存</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let busy = false;
+
+/* ---------- 序列计数 ---------- */
+$('seq').addEventListener('input', () => {
+  const n = $('seq').value.replace(/\s+/g, '').length;
+  $('counter').textContent = n + ' bp';
+  const el = $('estimate');
+  if (!el) return;
+  if (n === 0) { el.textContent = ''; return; }
+  if (n < 23) {
+    el.innerHTML = '<b style="color:#b45309">太短：一条 guide 就要 23 bp（20nt + PAM），这段产生不了候选</b>';
+    return;
+  }
+  if (n < 80) {
+    el.innerHTML = '<b style="color:#b45309">偏短：</b>23 bp 才装得下 1 条 guide，'
+                 + '这么短的序列最多出个位数候选。建议给一个外显子（几百 bp ~ 2 kb）。';
+    return;
+  }
+  // 实测 1600 bp -> 312 条，约 1 条 / 5.1 bp（只对 >=80bp 的序列估得准）
+  const est = Math.round(n / 5.1);
+  el.innerHTML = `预计约 <b>${est}</b> 条候选 guide`;
+});
+
+/* ---------- 碱基着色 ---------- */
+function colorSeq(s){
+  const pam = s.slice(-3), core = s.slice(0, -3);
+  const paint = t => [...t].map(c => `<span class="b-${c}">${c}</span>`).join('');
+  return `<span class="seq">${paint(core)}<span class="pam">${paint(pam)}</span></span>`;
+}
+const fmt = (v, d = 2) => (v === null || v === undefined) ? '<span class="muted">—</span>' : Number(v).toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- 日志 ---------- */
+function setStatus(lines, kind){
+  const dot = k => `<span class="dot ${k||''}"></span>`;
+  $('status').innerHTML = lines.map(l => `<div class="line">${dot(l.kind)}<span>${esc(l.text)}</span></div>`).join('');
+  $('pill').textContent = kind || '就绪';
+}
+
+/* ---------- 主流程 ---------- */
+async function analyze(){
+  if (busy) return;
+  const sequence = $('seq').value.trim();
+  if (!sequence){ setStatus([{text:'请先填写碱基序列', kind:'err'}]); return; }
+
+  busy = true;
+  $('run').disabled = true; $('run').textContent = '分析中…';
+  $('result').innerHTML = '<div class="empty"><div class="big">⌬</div>正在向两个网站取数并计算…<br><span style="font-size:12px">CRISPOR 约 20–40 秒，CHOPCHOP 约 10 秒</span></div>';
+  setStatus([
+    {text:'网站1 CRISPOR：提交中…', kind:'run'},
+    {text:'网站2 CHOPCHOP：排队中…', kind:'run'},
+  ], '运行中');
+
+  try{
+    const res = await fetch('/api/analyze', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        sequence,
+        genome: $('genome').value,
+        pam: $('pam').value,
+        target_pos: parseInt($('target').value, 10) || 22163096,
+        genome_offset: ($('goff').value.trim() || null),
+        genome_chrom: ($('gchrom').value.trim() || null),
+        locate_window: ($('locwin').value.trim() || null),
+        third_mode: $('thirdmode').value,
+        top_n: Math.max(1, Math.min(50, parseInt($('topn').value, 10) || 5)),
+      })
+    });
+    const data = await res.json();
+    if (!data.ok){ renderError(data); return; }
+    render(data);
+  }catch(err){
+    renderError({error: String(err)});
+  }finally{
+    busy = false; $('run').disabled = false; $('run').textContent = '开始分析';
+  }
+}
+
+/* 警告条里的"换成 SFTPC 示例"按钮 */
+function bindWarnActions(){
+  const b = document.getElementById('useSample');
+  if (b) b.addEventListener('click', () => {
+    $('goff').value = ''; $('gchrom').value = '';
+    $('seq').value = SAMPLE; $('seq').dispatchEvent(new Event('input'));
+    analyze();
+  });
+}
+
+function renderError(data){
+  $('pill').textContent = '失败';
+  setStatus([{text: data.error || '未知错误', kind:'err'}], '失败');
+  $('result').innerHTML = `<div class="empty" style="color:var(--warn)">
+    <div class="big">!</div>${esc(data.error || '失败')}</div>`;
+}
+
+function render(d){
+  // 步骤状态
+  const lines = (d.steps || []).map(s => s.ok
+    ? {text: `${s.site === 'crispor' ? '网站1 CRISPOR' : '网站2 CHOPCHOP'}：${s.n_guides} 条 guide${s.from_cache ? '（缓存）' : ''}`, kind:'ok'}
+    : {text: `${s.site === 'crispor' ? '网站1 CRISPOR' : '网站2 CHOPCHOP'} 失败：${s.error}`, kind:'err'});
+  lines.push({text:`耗时 ${d.elapsed_sec}s · 合并后 ${d.count} 条`, kind:'ok'});
+  setStatus(lines, '完成');
+
+  const rows = d.rows || [];
+  const raw = parseInt($('topn').value, 10) || 5;
+  const N = Math.max(1, Math.min(50, raw));
+  const top = rows[0];
+  const w = d.weights;
+  const picks = rows.slice(0, N);
+
+  const stats = `
+    <div class="stats">
+      <div><b>${d.count}</b>候选 guide</div>
+      <div><b>${d.sequence_length} bp</b>输入长度</div>
+      <div><b>${fmt(top?.final_score, 4)}</b>最高分</div>
+      <div><b>${rows.filter(r => r.distance !== null && r.distance < 20).length}</b>距目标 &lt;20 bp</div>
+      <div><b>${d.distance_available ? '3 / 3' : '2 / 3'}</b>可用数据</div>
+      <div title="两站都有的 sgRNA">
+        <b>${(d.parts && d.parts.part1) ?? '—'}</b>第一部分</div>
+      <div title="只有 CRISPOR 有">
+        <b>${(d.parts && d.parts.part2) ?? '—'}</b>第二部分</div>
+      <div title="只有 CHOPCHOP 有，按规则已丢弃">
+        <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>第三部分(丢弃)</div>
+      <div style="margin-left:auto;text-align:right">
+        ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site} 原始结果 ↗</a>`).join('<br>')}
+      </div>
+    </div>`;
+
+  const warn = (d.warnings && d.warnings.length)
+    ? `<div class="warnbar">⚠ ${d.warnings.map(w => esc(w).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>⚠ ')}</div>` : '';
+
+  // ---- 推荐候选 ----
+  const pickCards = picks.map(r => `
+    <div class="pick ${r.rank === 1 ? 'first' : ''}">
+      <span class="rk">${r.rank === 1 ? '最佳' : 'No.' + r.rank}</span>
+      <div class="sq">${colorSeq(r.sequence || '')}</div>
+      <div class="tot">${fmt(r.final_score, 4)}<small>/ 1.0000</small></div>
+      <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div>
+      <div class="meta">
+        <span>D16 ${fmt(r.doench16, 0)}</span>
+        <span>CFD ${fmt(r.cfd_spec, 0)}</span>
+        <span>距离 ${r.distance === null ? '—' : Number(r.distance).toFixed(1) + 'bp'}</span>
+        <span>${r.strand === 'fw' || r.strand === '+' ? '+' : '−'}</span>
+        <span>${r.pam_start ?? ''}</span>
+      </div>
+    </div>`).join('');
+
+  const shortNote = (rows.length < N && rows.length < 20)
+    ? `<div style="margin-top:9px;padding:8px 10px;background:#fff7ed;border:1px solid #fde3c7;border-radius:7px;
+                   font-size:12px;color:#b45309;line-height:1.6">
+         ⚠ 只找到 <b>${rows.length}</b> 条候选（你要 ${N} 条）。<br>
+         一条 guide = 20nt spacer + 3nt PAM = <b>23 bp</b>；
+         你输入了 <b>${d.sequence_length} bp</b>，<b>最多也就只能从这个长度里找出这么多</b>。<br>
+         「推荐候选条数」是<b>从结果里挑前 N 条展示</b>，不是生成 N 条 ——
+         想要更多候选，请给一段更长的序列（例如一个外显子，几百 bp ~ 2 kb）。
+       </div>` : '';
+
+  const pickBox = `
+    <div class="picks">
+      <div class="head">
+        <h3>推荐候选</h3>
+        <span class="n">分数最高的 ${picks.length} 条（共 ${rows.length} 条）· 条数
+          <input type="number" id="topnInline" value="${N}" min="1" max="50">
+        </span>
+      </div>
+      <div class="pickgrid">${pickCards}</div>
+      ${shortNote}
+    </div>`;
+
+  const body = rows.map(r => {
+    const isTop = r.rank <= N;
+    const best = r.rank === 1;
+    const parts = [
+      `<td class="rank">${best ? '<b>1</b>' : r.rank}</td>`,
+      `<td>${colorSeq(r.sequence || '')} ${
+        best ? '<span class="badge">最佳</span>'
+             : (isTop ? `<span class="badge" style="background:#e8f7f1;color:#0d8a5f;border:1px solid #bfe7d7">Top ${r.rank}</span>` : '')
+      }</td>`,
+      `<td class="num">${r.strand === 'fw' || r.strand === '+' ? '+' : '−'}</td>`,
+      `<td class="num">${r.pam_start != null
+          ? r.pam_start
+          : `<span class="muted" title="没有基因组坐标，显示序列内位置">seq:${r.seq_pam_start ?? '—'}</span>`}</td>`,
+      `<td class="num">${fmt(r.doench16, 0)}<div class="muted" style="font-size:11px">${fmt(r.doench16_mapped, 3)}</div></td>`,
+      `<td class="num">${fmt(r.cfd_spec, 0)}<div class="muted" style="font-size:11px">${fmt(r.cfd_spec_normalized, 3)}</div></td>`,
+      `<td class="num">${r.distance === null || r.distance === undefined
+          ? '<span class="muted">缺失</span>' : Number(r.distance).toFixed(1)}
+         <div class="muted" style="font-size:11px">${r.third_base !== null && r.third_base !== undefined
+            ? '分档 ' + r.third_base + (r.third_bonus ? ' +' + r.third_bonus : '') : ''}</div></td>`,
+      `<td class="num">${r.third_item === null || r.third_item === undefined
+          ? '<span class="muted">—</span>' : Number(r.third_item).toFixed(2)}</td>`,
+      `<td class="num scorecell"><span class="v">${fmt(r.final_score, 4)}</span>
+         ${r.weight_used && r.weight_used !== d.total_weight
+            ? `<div class="muted" style="font-size:10.5px">权重 ${r.weight_used}/${d.total_weight}</div>` : ''}
+         <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div></td>`,
+      `<td>${r.third_source === 'avg_part1'
+          ? '<span class="tag" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
+          : (r.third_source === 'computed'
+              ? '<span class="tag" style="border-color:#bfe7d7;color:#0d8a5f;background:#e8f7f1">实算</span>'
+              : '<span class="tag">—</span>')}
+         ${r.part === 1 ? '<span class="tag">第一部分</span>' : ''}</td>`,
+    ];
+    const cls = best ? 'best' : (isTop ? 'topn' : '');
+    return `<tr class="${cls}">${parts.join('')}</tr>`;
+  }).join('');
+
+  const kurumiBar = d.kurumi
+    ? `<div class="warnbar" style="background:#fef2f2;color:#b91c1c;border-bottom-color:#fecaca">
+         🪵 <b>滚木（null）</b> —— ${esc(d.kurumi_note || '两个网站没有共同的 sgRNA，第三项无法计算。')}
+       </div>` : '';
+  const warnBtn = d.need_offset
+    ? `<div style="padding:0 16px 12px"><button class="ghost" id="useSample" style="width:auto;padding:7px 14px">换成 SFTPC 示例序列（含 c.218）</button></div>`
+    : '';
+  const notesBar = (d.notes && d.notes.length)
+    ? `<div class="note" style="padding:9px 16px;font-size:12.5px;color:#5b6472;background:#f8fafc;border-bottom:1px solid var(--line2);line-height:1.7">
+         ${d.notes.map(esc).join('<br>')}</div>` : '';
+  $('result').innerHTML = stats + kurumiBar + warn + notesBar + warnBtn + pickBox + `
+    <div style="overflow:auto; max-height:calc(100vh - 250px)">
+      <table>
+        <thead><tr>
+          <th>#</th><th>序列 (20 nt + PAM)</th><th class="num">链</th><th class="num">PAM 起点</th>
+          <th class="num">Doench '16<br><span style="font-weight:400;text-transform:none">×${w.doench16} 均匀映射</span></th>
+          <th class="num">CFD Spec<br><span style="font-weight:400;text-transform:none">×${w.cfd_spec} ÷100</span></th>
+          <th class="num">距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
+          <th class="num">第三项<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档+奖励</span></th>
+          <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}</span></th>
+          <th>第三项来源</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+
+  document.querySelector('#result > div[style*="overflow"]')?.scrollTo(0,0);
+  const inline = $('topnInline');
+  bindWarnActions();
+  if (inline) inline.addEventListener('change', () => {
+    $('topn').value = inline.value;
+    render(d);
+  });
+  $('pill').textContent = '完成';
+}
+
+/* ---------- 示例序列（hg38 chr8:22162801-22163400，含 c.218） ---------- */
+const SAMPLE = 'GGGAAGCAGCAGGGAGAGACAGGTGAAGCAGGCTCTCTTGGGTCCCTCAAAACTAGACCCTGCTTCTAAGCTTCTATGTGTCTATGGGTTTGTTAGAATCCAGGCCACCTCCTCCAAGAAGCCTTCTCTGATCTCCTCAGCCCTTCCCTGTCCATCCATCGCATCGGCTGTCCAGCCCTAGGCAGCCGTGGGAGGGTGTTCAGCTTGTATAGGGAGAAGAGGGGACAGCCTCATGACCTCATGCCTGTCTCCTTGCCTGCCCCACCGTGTCAGGACTACTCCGCAGCTCCCCGGGGCCGATTTGGCATTCCCTGCTGCCCAGTGCACCTGAAACGCCTTCTTATCGTGGTGGTGGTGGTGGTCCTCATCGTCGTGGTGATTGTGGGAGCCCTGCTCATGGGTCTCCACATGAGCCAGAAACACACGGAGATGGTGAGAGGTGTGGGATGCACAGCAGTGGGCACAGGACATGCCAGACAGCGGGGCTAGGTGGGATGGGCGATAGGAAACTGTCCAAGGGGAGTGGAGGGGAGGAGGCAAGGGGCACAGCTAGAAGGAAAGAGGCACGAACCAGGCAGCAACCCAGCTCAGGCTTTTCCACAAGGCCCCTGCCCCGCAGCAGGACAGCCAGCTCCCTCCAGCACCTGGTTCCACTCAGCCTCCCTGAACTCTTGGGAAAGAGGGAAGCGCATTTGAGTACAGAGGCCTGAGTATGGGGATGGGTACCACTGGCTGAGTAGGAAAGGGGAAGACCAGGTGGCTCCATGCCCTTTCCCCAGGTTCTGGAGATGAGCATTGGGGCGCCGGAAGCCCAGCAACGCCTGGCCCTGAGTGAGCACCTGGTTACCACTGCCACCTTCTCCATCGGCTCCACTGGCCTCGTGGTGTATGACTACCAGCAGGTGGGTATGCCCAGACCTCCTGACCCTGGGACCAATGACAAGGCTCTGCTAGAGCCACCCAGCTGGGCCACTTCATCCACATCCATCTCTCCCTCTCCTCCAGACCTTTTTTGCCTGAGCCCCAGATTCTAGTATGACTCCCGTGCCCAACCTAGAGGGAGGTGGCTAAGGACCTGGGTCAGGGAGAGAGCAGGGCAGGGACCCCCGAATGATCTCCAGCATTCTGTGCCTAGCTGCTGATCGCCTACAAGCCAGCCCCTGGCACCTGCTGCTACATCATGAAGATAGCTCCAGAGAGCATCCCCAGTCTTGAGGCTCTCACTAGAAAAGTCCACAACTTCCAGGTGTGTGTGTGTGGGTGAAAAGAGTGGGCTGTCTCCCTCCCAGGGCTGCTGGGAGGAGTGTCCGAATGGTGGCTATTTGTCACCTGTAAAGCACTGTTCCTCATTGGCTGCCAGCTGACTGCCCCTCTCCTATTCCCCTGCACGACTCCTTTCCTTCCCACCCCACTGCCAAGCTGCTGGGCTCAGCTGAGTCCACTCACTACCTGGTGGCTTCTGACTCTAGCACAGCCCCTCTTTACTGATGAGAAAACTGAGGCTCAGAGAGATTGCCTGATATACCTGAAGTCCCACAATAAGGGCTGCACATGGGATAGAAACTCACTTCCTACATTCCAGATGGAATGCTCTCTGCAG';
+
+$('sample').addEventListener('click', () => {
+  $('seq').value = SAMPLE;
+  $('seq').dispatchEvent(new Event('input'));
+});
+$('run').addEventListener('click', analyze);
+
+/* 打开 #last 可直接看上次结果（刷新页面不丢） */
+if (location.hash === '#last'){
+  fetch('/api/last').then(r => r.json()).then(d => {
+    if (d && d.ok){ $('seq').value = '(上次的序列)'; render(d); }
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>

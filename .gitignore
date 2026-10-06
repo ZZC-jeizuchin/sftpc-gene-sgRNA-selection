@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# 抓取缓存（体积会涨；不想要就删，下次会重新抓）
+.crispor_cache/
+.chopchop_cache/
+.genome_cache/
+
+# AI 代理工作区内部状态（不属于项目）
+.dshwolf/
+
+# 输出
+crispor_out/
+chopchop_out/
+*.log
