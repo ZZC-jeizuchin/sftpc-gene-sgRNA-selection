@@ -57,10 +57,29 @@ DISTANCE_BANDS: list[tuple[float, float]] = [
 #   CRISPOR   Position/Strand  = **PAM 区间**在正链上的左端（anchor="pam"）
 #   fw / + 链上两者相差 20 bp。
 #
-# SpCas9 切在 PAM 5' 侧 3 bp（protospacer 第 17/18 位之间），用 PAM 起点 p 表示：
-#   正链: 切点 = p - 3.5      （protospacer 在 p-20..p-1）
-#   反链: 切点 = p + 5.5      （protospacer 在 p+3..p+22）
-CUT_FROM_PAM = {"+": -3.5, "-": 5.5}
+# SpCas9 切在 PAM 5' 侧 3 bp（protospacer 第 17/18 位之间）。
+#
+# ⚠️ 切点坐标取整数还是半点，**纯粹是坐标约定**，描述的是同一个物理位置：
+#
+#   "half"（默认）——把每个碱基当成一个**点**，坐标就是它的编号。
+#        那么切点落在两个碱基坐标的正中间 -> 必然是 x.5
+#        正链: 切点 = p - 3.5       反链: 切点 = p + 5.5
+#        好处: "切点离目标碱基 0.5" 能表达出"紧贴目标碱基边缘"这个极限
+#
+#   "int"  ——把每个碱基当成一个**区间**，坐标标的是区间的边界。
+#        那么"起点"和"切点"都是边界 -> 相减必然是整数
+#        正链: 切点 = p - 3.0       反链: 切点 = p + 6.0
+#        好处: 距离就是"隔了几个 bp"，是整数，更符合直觉
+#
+# 两种约定算出的物理切点是同一个，实测 434 条 guide **分档结果完全一样**。
+# 换约定只需要改这一个常量。
+CUT_CONVENTION = "half"          # "half" 或 "int"
+
+CUT_FROM_PAM_BY_CONVENTION = {
+    "half": {"+": -3.5, "-": 5.5},
+    "int":  {"+": -3.0, "-": 6.0},
+}
+CUT_FROM_PAM = CUT_FROM_PAM_BY_CONVENTION[CUT_CONVENTION]
 # 23mer 锚点 -> PAM 起点：+ 链 PAM 在右端(+20)，- 链 PAM 在左端(+0)
 PAM_FROM_23MER = {"+": 20, "-": 0}
 
