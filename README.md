@@ -158,6 +158,9 @@ chopchop_scraper/         网站2 爬虫
 `SFTPC_测试序列_hg38_2213bp.txt` —— hg38 chr8:22,161,829–22,164,041，
 SFTPC (NM_003018) 全部 6 个外显子编码区，含 c.218。直接粘进网页即可。
 
+> 这个文件是**纯碱基、单行、无任何注释**（也没有署名头）—— 因为加了任何字符都会
+> 导致粘贴进去报错。它跟 `LICENSE` 是仓库里仅有的两个不带署名头的文件。
+
 预期结果：CRISPOR 434 条 / CHOPCHOP 416 条 / 第一部分 416 / 第二部分 18。
 
 ---
@@ -165,8 +168,9 @@ SFTPC (NM_003018) 全部 6 个外显子编码区，含 c.218。直接粘进网�
 ## 文档
 
 - [`README_输入格式.md`](README_输入格式.md) —— 输入格式说明（碱基序列 + JSON）
-- [`负责人指示.md`](负责人指示.md) —— 负责人原话与实现对照
 - [`sgweb/README.md`](sgweb/README.md) —— 网页说明
+- [`crispor_scraper/README.md`](crispor_scraper/README.md) —— 网站1 接口与坐标约定
+- [`chopchop_scraper/README.md`](chopchop_scraper/README.md) —— 网站2 接口与坐标约定
 - `四个数据的定义.txt` —— 权重定义
 
 ---
