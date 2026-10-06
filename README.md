@@ -62,7 +62,7 @@ python run_chopchop.py --seq "ACGT..." --genome hg38
 **滚木(null)**：第一部分为空（两站完全没有共同的 sgRNA）时，第三项全部置 `null`，
 权重按 7:6 归一化，页面给出提示。
 
-详见 [`负责人指示.md`](负责人指示.md)。
+详见下方「三个网站的 guide 怎么合并」与 `sgweb/aggregate.py` 的注释。
 
 ---
 
