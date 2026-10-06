@@ -1,0 +1,8 @@
+{
+  "step1": {"region": "chr8:22119000-22119400"},
+  "step2": {"genome": "hg38"},
+  "step3": {"pam": "NGG"},
+  "name": "sftpc_exon3",
+  "data": ["doench16", "cfd_spec"],
+  "options": {"all_scores": false, "cache": true, "timeout": 900, "poll_interval": 3}
+}

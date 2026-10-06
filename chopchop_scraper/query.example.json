@@ -1,0 +1,11 @@
+{
+  "target": "SFTPC",
+  "genome": "hg38",
+  "nuclease": "CRISPR",
+  "application": "knockout",
+  "target_region": "WHOLE",
+  "sequence_name": "sftpc",
+  "target_pos": 22163096,
+  "options": {"scoring": "DOENCH_2016", "gc_min": 10, "gc_max": 90,
+              "cache": true, "timeout": 600, "poll_interval": 3}
+}

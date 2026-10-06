@@ -1,0 +1,114 @@
+{
+  "ok": true,
+  "query": {
+    "step1": {
+      "region": "chr8:22119000-22119400"
+    },
+    "step2": {
+      "genome": "hg38"
+    },
+    "step3": {
+      "pam": "NGG"
+    },
+    "name": "sftpc_exon3"
+  },
+  "crispor": {
+    "batch_id": "Ukkl7GWmn9R8eqUN6GYe",
+    "url": "https://crispor.gi.ucsc.edu/crispor.py?batchId=Ukkl7GWmn9R8eqUN6GYe",
+    "n_guides": 83,
+    "from_cache": true,
+    "reused_batch": true
+  },
+  "datasets": {
+    "doench16": {
+      "id": "doench16",
+      "name": "Doench '16",
+      "source": "crispor",
+      "source_url": "https://crispor.gi.ucsc.edu/",
+      "source_column": "Doench '16-Score",
+      "description": "on-target 编辑效率预测。CRISPOR 内部叫 fusi，调的是微软官方 Azimuth 2.0 （Doench et al. 2016 Rule Set 2，梯度提升回归树）。输入 30mer(-4/+3)，原始输出 0-1，CRISPOR 已缩放到 0-100 的整数。适用：U6 启动子、细胞内表达。序列两端 50bp 内的 guide 或含 N 的算不出（值为 null）。",
+      "value_type": "int",
+      "range": [
+        0,
+        100
+      ],
+      "direction": "higher_is_better",
+      "count": 83,
+      "stats": {
+        "min": 11,
+        "max": 72,
+        "mean": 48.08,
+        "missing": 0
+      },
+      "values": [
+        {
+          "guide_id": "265rev",
+          "strand": "rev",
+          "cut_position": 265,
+          "target_seq": "GCAGGTGTGAGCCCGCACCGGGG",
+          "value": 72
+        },
+        {
+          "guide_id": "145rev",
+          "strand": "rev",
+          "cut_position": 145,
+          "target_seq": "AAAGGTAGGTCCTCGGCCAGAGG",
+          "value": 60
+        },
+        {
+          "guide_id": "267rev",
+          "strand": "rev",
+          "cut_position": 267,
+          "target_seq": "ATGCAGGTGTGAGCCCGCACCGG",
+          "value": 47
+        }
+      ],
+      "values_truncated": "示例只保留前 3 条，完整结果见 count"
+    },
+    "cfd_spec": {
+      "id": "cfd_spec",
+      "name": "CFD Spec. score",
+      "source": "crispor",
+      "source_url": "https://crispor.gi.ucsc.edu/",
+      "source_column": "cfdSpecScore",
+      "description": "off-target 特异性预测。逐个脱靶位点算 CFD（Doench 2016 的位置×错配类型权重矩阵 × PAM 因子），再用 MIT 那套公式聚合：round(10000/(100+ΣCFD))。注意这是**guide 级聚合特异性分**（越大越安全），不是单个脱靶位点的 CFD 切割分（那个是 0-1、越大越危险）。全基因组搜到 4 个错配，NGG guide 另计入 NAG/NGA PAM。",
+      "value_type": "int",
+      "range": [
+        0,
+        100
+      ],
+      "direction": "higher_is_better",
+      "count": 83,
+      "stats": {
+        "min": 0,
+        "max": 91,
+        "mean": 64.18,
+        "missing": 1
+      },
+      "values": [
+        {
+          "guide_id": "265rev",
+          "strand": "rev",
+          "cut_position": 265,
+          "target_seq": "GCAGGTGTGAGCCCGCACCGGGG",
+          "value": 89
+        },
+        {
+          "guide_id": "145rev",
+          "strand": "rev",
+          "cut_position": 145,
+          "target_seq": "AAAGGTAGGTCCTCGGCCAGAGG",
+          "value": 91
+        },
+        {
+          "guide_id": "267rev",
+          "strand": "rev",
+          "cut_position": 267,
+          "target_seq": "ATGCAGGTGTGAGCCCGCACCGG",
+          "value": 90
+        }
+      ],
+      "values_truncated": "示例只保留前 3 条，完整结果见 count"
+    }
+  }
+}
