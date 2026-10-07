@@ -51,7 +51,8 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
                  log=None, genome_offset: int | None = None,
                  genome_chrom: str | None = None,
                  third_mode: str = "auto",
-                 locate_window: tuple[str, int, int] | None = None) -> dict:
+                 locate_window: tuple[str, int, int] | None = None,
+                 hard_filter: bool = False) -> dict:
     """跑两个爬虫 + 合并加权。任一网站失败都能降级出结果。"""
     def say(msg):
         if log:
@@ -119,7 +120,23 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         return {"ok": False, "error": "两个网站都失败了，无法计算。",
                 "warnings": result["warnings"], "steps": result["steps"]}
 
-    merged = merge(crispor_payload, chopchop_payload, target_pos, third_mode=third_mode)
+    merged = merge(crispor_payload, chopchop_payload, target_pos, third_mode=third_mode,
+                   hard_filter=hard_filter)
+
+    if hard_filter:
+        say(f"硬性过滤：{merged.get('filtered_before')} → {len(merged.get('rows', [])) + 0} 条"
+            f"（刷掉 {merged.get('filtered_count')} 条）")
+        if merged.get("filtered_count"):
+            names = {r["id"]: r["name"] for r in merged.get("hard_filter_rules", [])}
+            detail = "、".join(f"{names.get(k, k)} {v} 条"
+                              for k, v in (merged.get("filtered_reasons") or {}).items())
+            merged.setdefault("notes", []).append(
+                f"已开启硬性过滤：{merged.get('filtered_before')} 条 → "
+                f"{merged.get('filtered_before', 0) - merged.get('filtered_count', 0)} 条。"
+                f"被刷掉的原因：{detail}。")
+    else:
+        merged.setdefault("notes", []).append(
+            "未开启硬性过滤（默认）。开启后会按负责人的 6 条规则筛掉不合格的 guide。")
 
     # ---- 定位情况 ----
     off = genome_offset
@@ -271,6 +288,8 @@ class Handler(BaseHTTPRequestHandler):
                        int(m.group(2).replace(",", "")),
                        int(m.group(3).replace(",", "")))
 
+        hard_filter = str(params.get("hard_filter") or "").strip().lower() in ("1","true","yes","on")
+
         third_mode = (params.get("third_mode") or "auto").strip()
         if third_mode not in ("auto", "average", "computed"):
             self._json(400, {"ok": False, "error": "third_mode 必须是 auto / average / computed"})
@@ -281,7 +300,8 @@ class Handler(BaseHTTPRequestHandler):
                                genome_offset=goff,
                                genome_chrom=(params.get("genome_chrom") or None),
                                third_mode=third_mode,
-                               locate_window=loc_win)
+                               locate_window=loc_win,
+                               hard_filter=hard_filter)
         except Exception:
             self._json(500, {"ok": False, "error": "内部错误：\n" + traceback.format_exc()})
             return

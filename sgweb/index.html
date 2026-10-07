@@ -148,9 +148,52 @@
               font-variant-numeric:tabular-nums}
   .pick .bar{margin-top:7px}
   .scorecell .v{font-weight:650; font-variant-numeric:tabular-nums}
+
+  /* ---------- 硬性过滤：开关 + 圈 i 说明按钮 ---------- */
+  .switchrow{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;margin-top:2px}
+  .switchrow input{position:absolute;opacity:0;width:0;height:0}
+  .switch{width:42px;height:23px;border-radius:99px;background:#d5dbe3;position:relative;
+          transition:background .18s;flex:none}
+  .switch i{position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;
+            background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .18s}
+  .switchrow input:checked + .switch{background:var(--brand)}
+  .switchrow input:checked + .switch i{left:21.5px}
+  .switchrow input:focus-visible + .switch{outline:2px solid var(--brand);outline-offset:2px}
+  .switchtext{font-size:12.5px;color:var(--ink2)}
+
+  .infobtn{display:inline-flex;align-items:center;justify-content:center;
+           width:15px;height:15px;border-radius:50%;border:1.2px solid #9aa5b1;
+           color:#68727e;font-size:10.5px;font-weight:700;font-style:normal;
+           line-height:1;cursor:help;flex:none;font-family:Georgia,serif;
+           transition:all .15s;vertical-align:middle}
+  .infobtn:hover,.infobtn.on{border-color:var(--brand);color:var(--brand);
+                             background:#eef7ff}
+
+  .infopop{position:fixed;z-index:99;width:min(430px,calc(100vw - 32px));
+           background:#fff;border:1px solid var(--line);border-radius:10px;
+           box-shadow:0 10px 32px rgba(16,32,64,.16);padding:13px 15px;
+           font-size:12.5px;line-height:1.65;color:var(--ink2);display:none}
+  .infopop.show{display:block}
+  .infopop h4{margin:0 0 7px;font-size:13px;color:var(--ink);
+              display:flex;justify-content:space-between;align-items:center}
+  .infopop h4 em{font-style:normal;font-size:11px;color:var(--ink3);font-weight:400}
+  .infopop table{width:100%;border-collapse:collapse;font-size:12px}
+  .infopop th{text-align:left;color:var(--ink3);font-weight:600;font-size:11px;
+              padding:3px 0;border-bottom:1px solid var(--line2)}
+  .infopop td{padding:5px 0;border-bottom:1px solid var(--line2);vertical-align:top}
+  .infopop tr:last-child td{border-bottom:none}
+  .infopop td:first-child{color:var(--ink);font-weight:600;white-space:nowrap;padding-right:9px}
+  .infopop .why{color:#b45309;font-size:11.5px}
+  .infopop .note{color:var(--ink3);font-size:11.5px;margin-top:1px}
+
+  .yesno{display:inline-block;min-width:26px;padding:1px 7px;border-radius:5px;
+         font-size:11.5px;font-weight:600}
+  .yesno.yes{background:#e8f7f1;color:#0d8a5f;border:1px solid #bfe7d7}
+  .yesno.no{background:#f6f7f9;color:#8792a0;border:1px solid #e5e9ef}
 </style>
 </head>
 <body>
+<div class="infopop" id="filterPop"></div>
 <header>
   <h1>sgRNA 设计</h1>
   <span class="sub">CRISPOR + CHOPCHOP · 三数据加权排序</span>
@@ -233,6 +276,21 @@
           <option value="computed">只用真算值</option>
         </select>
         <div class="hint">只影响「仅 CRISPOR」的 sgRNA（它们没有 CHOPCHOP 的数据）。</div>
+      </div>
+
+      <!-- 硬性过滤开关 + 规则说明（ⓘ） -->
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:6px">
+          <span>是否开启硬性过滤</span>
+          <span class="infobtn" id="filterInfo" role="button" tabindex="0"
+                aria-label="查看硬性过滤规则说明">i</span>
+        </label>
+        <label class="switchrow">
+          <input type="checkbox" id="hardfilter">
+          <span class="switch"><i></i></span>
+          <span class="switchtext" id="hardfilterText">关闭</span>
+        </label>
+        <div class="hint">开启后按负责人的 6 条硬性规则筛掉不合格的 guide。</div>
       </div>
 
       <div class="field">
@@ -339,6 +397,7 @@ async function analyze(){
         genome_chrom: ($('gchrom').value.trim() || null),
         locate_window: ($('locwin').value.trim() || null),
         third_mode: $('thirdmode').value,
+        hard_filter: $('hardfilter').checked,
         top_n: Math.max(1, Math.min(50, parseInt($('topn').value, 10) || 5)),
       })
     });
@@ -467,6 +526,11 @@ function render(d){
                 ? ' ' + (r.third_bonus > 0 ? '+' : '−') + pts(Math.abs(r.third_bonus), 0) : '') : ''}</div></td>`,
       `<td class="num">${r.third_item === null || r.third_item === undefined
           ? '<span class="muted">—</span>' : pts(r.third_item)}</td>`,
+      // ---- 是否覆盖突变位点 ----
+      `<td class="num">${r.covers_target
+          ? '<span class="yesno yes">是</span>'
+          : '<span class="yesno no">否</span>'}${r.gc_content != null
+          ? `<div class="muted" style="font-size:10.5px">GC ${r.gc_content.toFixed(0)}%</div>` : ''}</td>`,
       `<td class="num scorecell"><span class="v">${pts(r.final_score)}</span>
          ${r.weight_used && r.weight_used !== d.total_weight
             ? `<div class="muted" style="font-size:10.5px">权重比 ${r.weight_used}/${d.total_weight}</div>` : ''}
@@ -512,6 +576,7 @@ function render(d){
           <th class="num">CFD Spec<br><span style="font-weight:400;text-transform:none">×${w.cfd_spec} ÷100</span></th>
           <th class="num" title="切割位点到目标位点的碱基距离">突变距离<br><span style="font-weight:400;text-transform:none">切点→目标</span></th>
           <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">×${w.distance} 分档±覆盖</span></th>
+          <th class="num" title="这条 sgRNA 的 20nt 区间有没有盖住突变位点 chr8:22163096（负责人《评分规则》要求输出的是/否）">覆盖突变位点</th>
           <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">÷${d.total_weight}（满分 100）</span></th>
           <th title="这条 sgRNA 是哪些网站给出的：两站都有 = CRISPOR 和 CHOPCHOP 都给出了；仅 CRISPOR = CHOPCHOP 没给出">sgRNA 来源</th>
           <th title="突变距离评分是怎么来的：实算 = 用这条 sgRNA 自己的切点算的；平均值顶替 = 借用了「两站都有」那批的平均值">突变距离评分来源</th>
@@ -537,6 +602,78 @@ $('sample').addEventListener('click', () => {
   $('seq').value = SAMPLE;
   $('seq').dispatchEvent(new Event('input'));
 });
+
+/* ==================== 硬性过滤：开关 + 圈 i 说明 ==================== */
+const FILTER_RULES = [
+  ["spacer 长度", "必须恰好 20 nt", "长度 ≠ 20 nt",
+   "SpCas9 的 spacer 固定 20 nt，多一个少一个都不行。"],
+  ["PAM 序列", "必须是 NGG（SpCas9 标准）", "不包含 NGG",
+   "只有 NGG 才是 SpCas9 的标准 PAM。"],
+  ["GC 含量", "必须介于 40% 到 70%", "GC < 40% 或 GC > 70%",
+   "GC 太低结合不稳，太高容易形成二级结构、脱靶也高。"],
+  ["终止信号", "spacer 中不能含连续 4 个 T（TTTT）", "包含 TTTT",
+   "TTTT 是转录终止信号，会导致 sgRNA 提前截断。"],
+  ["重复序列", "不能含连续 4 个以上相同碱基（如 AAAA）", "连续重复 ≥ 4",
+   "连续同碱基会降低合成质量，也容易滑链错配。"],
+  ["去重", "相同 spacer 序列只保留一条", "重复序列",
+   "同一个 20 nt spacer 出现在不同位置时只留一条。"],
+];
+
+function renderFilterPop(){
+  const rows = FILTER_RULES.map(([n,r,w,note]) =>
+    `<tr><td>${n}</td><td>${r}<div class="why">剔除条件：${w}</div>
+     <div class="note">${note}</div></td></tr>`).join('');
+  $('filterPop').innerHTML =
+    `<h4>硬性过滤规则 <em>负责任务书《硬性过滤规则》· 共 6 条</em></h4>
+     <table><thead><tr><th>指标</th><th>规则</th></tr></thead><tbody>${rows}</tbody></table>
+     <div class="note" style="margin-top:8px">开启后，任一条不满足的 sgRNA 会被直接剔除，不参与评分与排序。</div>`;
+}
+
+function placePop(){
+  const b = $('filterInfo'), pop = $('filterPop'), r = b.getBoundingClientRect();
+  const w = Math.min(430, window.innerWidth - 32);
+  let left = r.left - 6;
+  if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
+  if (left < 12) left = 12;
+  pop.style.left = left + 'px';
+  pop.style.width = w + 'px';
+  // 优先显示在按钮下方，空间不够就翻到上方
+  pop.style.visibility = 'hidden'; pop.classList.add('show');
+  const ph = pop.offsetHeight;
+  pop.style.top = (r.bottom + 8 + ph > window.innerHeight - 12 && r.top - ph - 8 > 8)
+      ? (r.top - ph - 8) + 'px' : (r.bottom + 8) + 'px';
+  pop.style.visibility = '';
+}
+function showPop(){ renderFilterPop(); $('filterInfo').classList.add('on'); placePop(); }
+function hidePop(){ $('filterInfo').classList.remove('on'); $('filterPop').classList.remove('show'); }
+
+(function bindFilterUI(){
+  const btn = $('filterInfo'), pop = $('filterPop'), cb = $('hardfilter');
+  let pinned = false;
+  // 桌面：悬停显示
+  btn.addEventListener('mouseenter', showPop);
+  btn.addEventListener('mouseleave', () => { if(!pinned) hidePop(); });
+  pop.addEventListener('mouseenter', () => { pinned = true; });
+  pop.addEventListener('mouseleave', () => { pinned = false; hidePop(); });
+  // 手机 / 触摸：点击切换（点别处关闭）
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    pinned = !pop.classList.contains('show');
+    pinned ? showPop() : hidePop();
+  });
+  btn.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); btn.click(); }
+  });
+  document.addEventListener('click', e => {
+    if(!pop.contains(e.target) && e.target !== btn){ pinned = false; hidePop(); }
+  });
+  window.addEventListener('scroll', () => { if(pop.classList.contains('show')) placePop(); }, true);
+  window.addEventListener('resize', () => { if(pop.classList.contains('show')) placePop(); });
+  // 开关文案
+  const sync = () => { $('hardfilterText').textContent = cb.checked ? '开启' : '关闭'; };
+  cb.addEventListener('change', sync); sync();
+})();
+
 $('run').addEventListener('click', analyze);
 
 /* 打开 #last 可直接看上次结果（刷新页面不丢） */
