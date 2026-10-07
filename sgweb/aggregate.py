@@ -160,15 +160,85 @@ def third_item_value(distance, pam_start, strand, target_pos,
     return round(val, 6), base, round(delta, 6)
 
 
+# =====================================================================
+# 硬性过滤规则（来自负责人的《硬性过滤规则.xls》，6 条）
+# 通过 merge(hard_filter=True) 开启；默认关闭。
+# =====================================================================
+HARD_FILTER_RULES = [
+    {"id": "length",  "name": "spacer 长度",
+     "rule": "必须恰好 20 nt",              "why": "长度 ≠ 20 nt",
+     "note": "SpCas9 的 spacer 固定 20 nt，多一个少一个都不行。"},
+    {"id": "pam",     "name": "PAM 序列",
+     "rule": "必须是 NGG（SpCas9 标准）",    "why": "不包含 NGG",
+     "note": "只有 NGG 才是 SpCas9 的标准 PAM。"},
+    {"id": "gc",      "name": "GC 含量",
+     "rule": "必须介于 40% 到 70%",          "why": "GC < 40% 或 GC > 70%",
+     "note": "GC 太低结合不稳，太高容易形成二级结构、脱靶也高。"},
+    {"id": "tttt",    "name": "终止信号",
+     "rule": "spacer 中不能含连续 4 个 T（TTTT）", "why": "包含 TTTT",
+     "note": "TTTT 是转录终止信号，会导致 sgRNA 提前截断。"},
+    {"id": "repeat",  "name": "重复序列",
+     "rule": "不能含连续 4 个以上相同碱基（如 AAAA）", "why": "连续重复 ≥ 4",
+     "note": "连续同碱基会降低合成质量，也容易滑链错配。"},
+    {"id": "dup",     "name": "去重",
+     "rule": "相同 spacer 序列只保留一条",   "why": "重复序列",
+     "note": "同一个 20 nt spacer 出现在不同位置时只留一条。"},
+]
+
+
+def gc_content(spacer: str | None) -> float | None:
+    """spacer 的 GC 百分比（0-100）。"""
+    if not spacer:
+        return None
+    s = spacer.upper()
+    return round(100.0 * sum(1 for c in s if c in "GC") / len(s), 4)
+
+
+def hard_filter_violations(row: dict) -> list[str]:
+    """返回这条 guide 违反了哪些硬性规则（空列表 = 通过）。"""
+    seq = (row.get("sequence") or "").upper()
+    spacer = (row.get("spacer") or seq[:20]).upper()
+    bad: list[str] = []
+
+    if len(spacer) != 20:
+        bad.append("length")
+    if not (len(seq) >= 23 and seq[-2:] == "GG"):
+        bad.append("pam")
+    g = gc_content(spacer)
+    if g is None or not (40.0 <= g <= 70.0):
+        bad.append("gc")
+    if "TTTT" in spacer:
+        bad.append("tttt")
+    for base in "ACGT":
+        if base * 4 in spacer:
+            bad.append("repeat")
+            break
+    return bad
+
+
+def _count_reasons(rows: list[dict]) -> dict:
+    """统计每条硬性规则各刷掉了多少条。"""
+    from collections import Counter
+    c = Counter()
+    for r in rows:
+        for k in r.get("filtered_by", []):
+            c[k] += 1
+    return dict(c)
+
+
 def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
           target_pos: int = DEFAULT_TARGET_POS,
-          third_mode: str = "auto") -> dict:
+          third_mode: str = "auto",
+          hard_filter: bool = False) -> dict:
     """合并 + 分三部分 + 加权排序。
 
     third_mode:
         "auto"     能真算就真算，算不出来用第一部分平均值（推荐）
         "average"  完全按负责人原话：第二部分一律用第一部分平均值
         "computed" 第二部分只用真算值（算不出就 null）
+    hard_filter:
+        True  → 先按 6 条硬性过滤规则筛掉不合格的 guide，再评分排序
+        False → 不做过滤（默认）
     """
     # ---------------------------------------------------------- 1. 建索引
     def index(payload):
@@ -217,6 +287,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
             "strand": src.get("strand"),
             "sequence": src.get("target_seq"),
             "spacer": spacer_of(src.get("target_seq")),
+            "gc_content": gc_content(spacer_of(src.get("target_seq"))),
             "cut_site": src.get("cut_site"),
             "distance": src.get("distance"),
             "doench16": c.get("doench16"),
@@ -230,11 +301,32 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     rows2 = [make_row(k, 2) for k in part2_keys]
     all_rows = rows1 + rows2
 
+    # ------------------------------------------------ 3.5 硬性过滤（可选）
+    filtered_rows: list[dict] = []
+    if hard_filter:
+        kept: list[dict] = []
+        seen_spacer: set[str] = set()
+        for r in all_rows:
+            bad = hard_filter_violations(r)
+            sp = (r.get("spacer") or "").upper()
+            if not bad and sp in seen_spacer:
+                bad = ["dup"]                       # 同 spacer 只留第一条
+            if bad:
+                r["filtered_by"] = bad
+                filtered_rows.append(r)
+                continue
+            seen_spacer.add(sp)
+            kept.append(r)
+        all_rows = kept
+        rows1 = [r for r in all_rows if r["part"] == 1]
+        rows2 = [r for r in all_rows if r["part"] == 2]
+
     # ---------------------------------------------------------- 4. 第三项
     # 第一部分：分档 + 覆盖奖励
     for r in rows1:
         v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos,
                                               guide_start=r["guide_start"])
+        r["covers_target"] = bool(extra and extra > 0)
         r["third_base"], r["third_bonus"] = base, extra
         r["third_item_raw"] = v
         r["third_item"] = v
@@ -248,6 +340,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     for r in rows2:
         v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos,
                                               guide_start=r["guide_start"])
+        r["covers_target"] = bool(extra and extra > 0)
         r["third_base"], r["third_bonus"] = base, extra
         r["third_item_raw"] = v
         r["third_computed"] = v
@@ -318,6 +411,12 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
             "part2": len(rows2),
             "part3_dropped": len(part3_keys),
         },
+        # ---- 硬性过滤 ----
+        "hard_filter": hard_filter,
+        "hard_filter_rules": HARD_FILTER_RULES,
+        "filtered_count": len(filtered_rows),
+        "filtered_before": len(all_rows) + len(filtered_rows),
+        "filtered_reasons": _count_reasons(filtered_rows),
         "avg_part1_third": avg_part1,
         "kurumi": kurumi,
         "kurumi_note": note,
