@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""CHOPCHOP 命令行：抓第三个数据（切点 → chr8:22163096 的距离）。"""
+"""CHOPCHOP 命令行：抓第三个数据（切点 -> chr8:22163096 的距离）。"""
 
 from __future__ import annotations
 

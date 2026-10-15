@@ -11,7 +11,7 @@ hg38 chr8:22,163,096
   = 最常见的 chILD 突变 I73T (c.218T>C) 的位点
 ```
 
-⚠️ **这个坐标只对应 hg38**。hg19 的 SFTPC 在 chr8:22,019,310–22,021,991，两者差 14 万 bp，用错基因组所有距离都会落到 `>200bp` 档。
+ **这个坐标只对应 hg38**。hg19 的 SFTPC 在 chr8:22,019,310-22,021,991，两者差 14 万 bp，用错基因组所有距离都会落到 `>200bp` 档。
 
 ## 1. 接口：CHOPCHOP 有正规 JSON API
 
@@ -49,7 +49,7 @@ Rank  Target sequence  Genomic location  Strand  GC content (%)
 Self-complementarity  MM0  MM1  MM2  MM3  Efficiency
 ```
 
-## 2. ⚠️ 坐标约定（关键，已实测 161/161 通过）
+## 2.  坐标约定（关键，已实测 161/161 通过）
 
 > **`Genomic location` = 23 bp 靶位点（20 nt spacer + PAM）在正链上的最左端 1-based 坐标。**
 
@@ -57,30 +57,30 @@ Self-complementarity  MM0  MM1  MM2  MM3  Efficiency
 
 | 链 | 切割位点（正链坐标） |
 |---|---|
-| `+` | `loc + 16` 与 `loc + 17` 之间 → **`loc + 16.5`** |
-| `−` | `loc + 5` 与 `loc + 6` 之间 → **`loc + 5.5`** |
+| `+` | `loc + 16` 与 `loc + 17` 之间 -> **`loc + 16.5`** |
+| `-` | `loc + 5` 与 `loc + 6` 之间 -> **`loc + 5.5`** |
 
-**两条链差 11 bp。** 文档里写的"22163096 取绝对值"如果直接拿 `loc` 去减，`+` 链和 `−` 链的 guide 会拿到系统性不同的距离。
+**两条链差 11 bp。** 文档里写的"22163096 取绝对值"如果直接拿 `loc` 去减，`+` 链和 `-` 链的 guide 会拿到系统性不同的距离。
 
 实测对比（SFTPC / hg38 / WHOLE，161 条）：
 
 | | 距离最近的 5 条 |
 |---|---|
-| **正确（算切点）** | 22163079+ (0.5) · 22163078+ (1.5) · 22163077+ (2.5) · 22163085+ (5.5) · 22163104− (13.5) |
-| 错误（直接用 loc） | 22163103+ (7) · 22163104− (8) · 22163085+ (11) · 22163111− (15) · 22163112− (16) |
+| **正确（算切点）** | 22163079+ (0.5) · 22163078+ (1.5) · 22163077+ (2.5) · 22163085+ (5.5) · 22163104- (13.5) |
+| 错误（直接用 loc） | 22163103+ (7) · 22163104- (8) · 22163085+ (11) · 22163111- (15) · 22163112- (16) |
 
 **排名完全不同。** JSON 输出里同时给了 `distance`（正确）和 `distance_naive_nostrand`（对照，别用）。
 
-验证方法：拉 hg38 全序列，对每条 guide 取 `loc` 起的 23 bp，`+` 链比对正链、`−` 链比对反向互补 —— 161 条全中。
+验证方法：拉 hg38 全序列，对每条 guide 取 `loc` 起的 23 bp，`+` 链比对正链、`-` 链比对反向互补 —— 161 条全中。
 
 ## 3. 距离分档（照文档）
 
 | 距离 | 分数 |
 |---|---|
 | < 20 bp | 1.0 |
-| 20–50 bp | 0.9 |
-| 50–100 bp | 0.7 |
-| 100–200 bp | 0.4 |
+| 20-50 bp | 0.9 |
+| 50-100 bp | 0.7 |
+| 100-200 bp | 0.4 |
 | > 200 bp | 0.1 |
 
 在 `distance.py` 的 `DISTANCE_BANDS` 里，改一处即可。
@@ -123,7 +123,7 @@ python run_chopchop.py --list-cache
   "datasets": {
     "distance_to_22163096": {
       "id": "distance_to_22163096",
-      "name": "距离（切点 → chr8:22163096）",
+      "name": "距离（切点 -> chr8:22163096）",
       "source": "chopchop",
       "direction": "lower_is_better",
       "unit": "bp",
@@ -147,7 +147,7 @@ python run_chopchop.py --list-cache
 
 | 场景 | 耗时 |
 |---|---|
-| 全新查询（提交 → 轮询 → 下载 → 解析） | **7 秒**（CODING）/ ~10 秒（WHOLE） |
+| 全新查询（提交 -> 轮询 -> 下载 -> 解析） | **7 秒**（CODING）/ ~10 秒（WHOLE） |
 | 复用 jobId 重下 | 2.2 秒 |
 | 缓存命中 | **0.06 秒**，0 网络请求 |
 
@@ -160,7 +160,7 @@ run_chopchop.py               入口脚本
 chopchop_scraper/
     config.py    Target/Genome/Nuclease/For + Options 的定义、校验、拼 opts
     client.py    HTTP：POST 提交 / 探测 results.tsv / run.info / query.json
-    cache.py     index.json（指纹→jobId）+ raw/（原始响应缓存）
+    cache.py     index.json（指纹->jobId）+ raw/（原始响应缓存）
     parser.py    results.tsv -> GuideRecord
     distance.py  **第三个数据**：切点计算 + 区间打分 + JSON 打包
     pipeline.py  fetch() + ChopchopResult
@@ -171,7 +171,7 @@ chopchop_scraper/
 ## 8. 已知边界
 
 - `Genomic location` 是 23 mer 左端，**任何用到"位置"的地方都要先加链偏移**（这是本模块最容易错的一点）。
-- CHOPCHOP 只搜到 **3 个错配**（`MM0`–`MM3`），比网站1 浅；它给的是脱靶**计数**，没有 CFD 分。
+- CHOPCHOP 只搜到 **3 个错配**（`MM0`-`MM3`），比网站1 浅；它给的是脱靶**计数**，没有 CFD 分。
 - `Efficiency` 默认是 Doench 2016，和网站1 的 `Doench '16` **同源但实现不同**，数值不完全一样，别混用。
 - 以序列（`fastaInput`）提交时结果里仍会给基因组坐标（若序列能比中），但比不中就没有坐标。
 

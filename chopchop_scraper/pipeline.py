@@ -97,7 +97,7 @@ def fetch(
             log(f"自动定位：序列在 {locate_info['chrom']} 上，genome_offset="
                 f"{locate_info['offset']}（{locate_info['note']}）")
         else:
-            log(f"⚠ 自动定位失败：{locate_info.get('note')}；基因组距离将算不出来")
+            log(f" 自动定位失败：{locate_info.get('note')}；基因组距离将算不出来")
     client = client or ChopchopClient(timeout=60, retries=inp.retries, cache=cache)
     client.cache = cache
     key = ChopchopCache.key_from_input(inp)

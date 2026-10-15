@@ -19,24 +19,24 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 3.2 数据流设计
 text
 用户输入（SFTPC突变类型 + 目标区域）
-        ↓
+        v
 [Step 1] 基因组序列提取（从Ensembl/NCBI获取SFTPC参考序列）
-        ↓
+        v
 [Step 2] 突变序列生成（根据用户输入的突变类型生成突变型序列）
-        ↓
+        v
 [Step 3] 候选sgRNA枚举（扫描NGG PAM，提取20nt spacer）
-        ↓
+        v
 [Step 4] 多平台数据整合（可选：从CRISPOR/CHOPCHOP导入已有sgRNA列表）
-        ↓
+        v
 [Step 5] 三维度评分（On-target效率 + Off-target特异性 + 突变背景适配）
-        ↓
+        v
 [Step 6] 综合排名与可视化输出
 3.3 核心技术组件
 组件	技术方案	说明
 Web框架	Flask/FastAPI	Python后端，轻量且生态丰富
 基因组数据	Ensembl REST API + pyfaidx	动态获取序列，本地缓存FASTA
 On-target评分	Azimuth(Rule Set 2) + DeepHF	调用crisprScore或预训练模型
-Off-target搜索	Bowtie2/Cas-OFFinder	全基因组比对，允许≤3错配
+Off-target搜索	Bowtie2/Cas-OFFinder	全基因组比对，允许<=3错配
 CFD评分	自实现或调用crisprScore	基于Doench 2016的错配权重矩阵
 前端可视化	Plotly/D3.js	交互式图表，sgRNA在基因上的位置展示
 数据存储	SQLite + Redis	基因组索引持久化 + 计算缓存加速
@@ -46,7 +46,7 @@ CFD评分	自实现或调用crisprScore	基于Doench 2016的错配权重矩阵
 
 文本框输入目标基因名称（SFTPC）或直接粘贴基因序列
 
-下拉菜单选择突变类型（支持常见SFTPC突变如I73T、E66K、Δ91-93等，或手动输入自定义突变）
+下拉菜单选择突变类型（支持常见SFTPC突变如I73T、E66K、del91-93等，或手动输入自定义突变）
 
 可选：上传来自CRISPOR/CHOPCHOP/Benchling的候选sgRNA列表（CSV格式）
 

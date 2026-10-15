@@ -29,16 +29,16 @@
 负责人定的三部分规则：
 
     按 20nt spacer / PAM 起点对齐后分三堆：
-        第一部分 = 两个网站都有            → 三项齐全
+        第一部分 = 两个网站都有            -> 三项齐全
         第二部分 = cris(CRISPOR) 有、跳跳(CHOPCHOP) 没有
-        第三部分 = 跳跳有、cris 没有        → 【直接扔掉】
+        第三部分 = 跳跳有、cris 没有        -> 【直接扔掉】
 
     第二部分的第三项：它没有跳跳的切割位点数据。
-        → 能算就算（CRISPOR 其实也给切点，实测和 CHOPCHOP 完全一致）
-        → 算不出来才用【第一部分第三项得分的平均值】顶替
+        -> 能算就算（CRISPOR 其实也给切点，实测和 CHOPCHOP 完全一致）
+        -> 算不出来才用【第一部分第三项得分的平均值】顶替
 
     极端情况：第一部分为空（两站完全不重合）
-        → 第三项 = 滚木 = null
+        -> 第三项 = 滚木 = null
 =====================================================================
 """
 
@@ -52,17 +52,17 @@ WEIGHTS = {"doench16": 7, "cfd_spec": 6, "distance": 4}
 TOTAL_WEIGHT = sum(WEIGHTS.values())          # 17
 
 # 覆盖奖励（负责人 2026-10-06 最终定版）：
-#   guide 的 20nt 区间压住目标点 (X <= 目标 <= X+20) → 第三项 +0.1
-#   没压住                                        → 第三项 −0.1
+#   guide 的 20nt 区间压住目标点 (X <= 目标 <= X+20) -> 第三项 +0.1
+#   没压住                                        -> 第三项 -0.1
 #   第三项上限 1.0，下限 0.0
 #
-# 【为什么必须要有那个 −0.1】：
+# 【为什么必须要有那个 -0.1】：
 #   切点永远在 [X, X+20] 这个窗口内部（正链偏移 17，反链偏移 6），
-#   所以"压住目标"必然意味着切点距离 < 20bp → 分档本来就是 1.0。
+#   所以"压住目标"必然意味着切点距离 < 20bp -> 分档本来就是 1.0。
 #   如果只加不减，1.0+0.1 会被上限 1.0 吃掉，加分永远是废的。
-#   加上 −0.1 之后：压住的 = 1.0，没压住的 = 0.9，两者才真正分开。
-COVERAGE_BONUS = 0.1      # 压住目标点 → +
-COVERAGE_PENALTY = 0.1    # 没压住     → −
+#   加上 -0.1 之后：压住的 = 1.0，没压住的 = 0.9，两者才真正分开。
+COVERAGE_BONUS = 0.1      # 压住目标点 -> +
+COVERAGE_PENALTY = 0.1    # 没压住     -> -
 THIRD_ITEM_CAP = 1.0
 # 下限取 0.1（= 分档表最低那一档），不是 0。
 # 原因：扣 0.1 不能把最差档（>200bp = 0.1）压到 0 —— 那样"超出范围"的会变成 0 分，
@@ -146,7 +146,7 @@ def third_item_value(distance, pam_start, strand, target_pos,
                      window_mode: str = COVERAGE_WINDOW):
     """第三项 = 距离分档 + 覆盖奖励。
 
-    压住目标点 → +bonus；没压住 → −penalty。
+    压住目标点 -> +bonus；没压住 -> -penalty。
     最后夹在 [0, 1] 之间（负责人要求「不超过 1」）。
     返回 (最终分, 分档分, 加减分)。
     """
@@ -166,7 +166,7 @@ def third_item_value(distance, pam_start, strand, target_pos,
 # =====================================================================
 HARD_FILTER_RULES = [
     {"id": "length",  "name": "spacer 长度",
-     "rule": "必须恰好 20 nt",              "why": "长度 ≠ 20 nt",
+     "rule": "必须恰好 20 nt",              "why": "长度 != 20 nt",
      "note": "SpCas9 的 spacer 固定 20 nt，多一个少一个都不行。"},
     {"id": "pam",     "name": "PAM 序列",
      "rule": "必须是 NGG（SpCas9 标准）",    "why": "不包含 NGG",
@@ -178,7 +178,7 @@ HARD_FILTER_RULES = [
      "rule": "spacer 中不能含连续 4 个 T（TTTT）", "why": "包含 TTTT",
      "note": "TTTT 是转录终止信号，会导致 sgRNA 提前截断。"},
     {"id": "repeat",  "name": "重复序列",
-     "rule": "不能含连续 4 个以上相同碱基（如 AAAA）", "why": "连续重复 ≥ 4",
+     "rule": "不能含连续 4 个以上相同碱基（如 AAAA）", "why": "连续重复 >= 4",
      "note": "连续同碱基会降低合成质量，也容易滑链错配。"},
     {"id": "dup",     "name": "去重",
      "rule": "相同 spacer 序列只保留一条",   "why": "重复序列",
@@ -237,8 +237,8 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         "average"  完全按负责人原话：第二部分一律用第一部分平均值
         "computed" 第二部分只用真算值（算不出就 null）
     hard_filter:
-        True  → 先按 6 条硬性过滤规则筛掉不合格的 guide，再评分排序
-        False → 不做过滤（默认）
+        True  -> 先按 6 条硬性过滤规则筛掉不合格的 guide，再评分排序
+        False -> 不做过滤（默认）
     """
     # ---------------------------------------------------------- 1. 建索引
     def index(payload):
@@ -260,7 +260,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     # ---------------------------------------------------------- 2. 分三部分
     part1_keys = sorted(set(cri) & set(cho), key=str)      # 两站都有
     part2_keys = sorted(set(cri) - set(cho), key=str)      # cris 有、跳跳没有
-    part3_keys = sorted(set(cho) - set(cri), key=str)      # 跳跳有、cris 没有 → 扔掉
+    part3_keys = sorted(set(cho) - set(cri), key=str)      # 跳跳有、cris 没有 -> 扔掉
 
     # ---------------------------------------------------------- 3. 组行
     def make_row(key, kind):
@@ -271,8 +271,8 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         seqp = c.get("seq_pam_start") if c.get("seq_pam_start") is not None else h.get("seq_pam_start")
         st = normalize_strand(src.get("strand"))
         # sgRNA 起点 = 23mer 在正链上的最左端（= CHOPCHOP 网页上显示的 Genomic location）
-        #   + 链：PAM 在右端，spacer 起点 = PAM起点 − 20
-        #   − 链：PAM 在左端，起点就是 PAM 起点
+        #   + 链：PAM 在右端，spacer 起点 = PAM起点 - 20
+        #   - 链：PAM 在左端，起点就是 PAM 起点
         def gstart(pam):
             if pam is None:
                 return None
@@ -354,13 +354,13 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         r["third_source"] = src
 
     # ---------------------------------------------------------- 5. 滚木
-    #   第一部分为空 = 两个网站完全不重合 → 第三项全部 = null
+    #   第一部分为空 = 两个网站完全不重合 -> 第三项全部 = null
     kurumi = (len(rows1) == 0)
     if kurumi:
         for r in all_rows:
             r["third_item"] = None
             r["third_source"] = None
-        note = ("两个网站没有找到任何共同的 sgRNA（「两站都有」那批为空）→ "
+        note = ("两个网站没有找到任何共同的 sgRNA（「两站都有」那批为空）-> "
                 "突变距离评分 = 滚木(null)。请确认输入的这条基因是否过于变异，"
                 "或者根本不是目标基因。")
     else:

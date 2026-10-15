@@ -92,8 +92,8 @@ CFD_SPEC = DatasetSpec(
     source_url="https://crispor.gi.ucsc.edu/",
     source_column="cfdSpecScore",
     description=(
-        "off-target 特异性预测。逐个脱靶位点算 CFD（Doench 2016 的位置×错配类型权重矩阵 "
-        "× PAM 因子），再用 MIT 那套公式聚合：round(10000/(100+ΣCFD))。"
+        "off-target 特异性预测。逐个脱靶位点算 CFD（Doench 2016 的位置x错配类型权重矩阵 "
+        "x PAM 因子），再用 MIT 那套公式聚合：round(10000/(100+sumCFD))。"
         "注意这是**guide 级聚合特异性分**（越大越安全），不是单个脱靶位点的 CFD 切割分"
         "（那个是 0-1、越大越危险）。全基因组搜到 4 个错配，NGG guide 另计入 NAG/NGA PAM。"
     ),

@@ -30,8 +30,8 @@ CHOPCHOP 有正规 JSON API（比网站1 还干净）：
 坐标约定（用 hg38 全序列实测 161/161 条通过）：
     "Genomic location" = 23 bp 靶位点（20nt + PAM）在**正链上的最左端 1-based 坐标** loc。
     切割位点（SpCas9，PAM 前 3 bp）：
-        + 链： loc + 16 与 loc + 17 之间   →  loc + 16.5
-        - 链： loc + 5  与 loc + 6 之间    →  loc + 5.5
+        + 链： loc + 16 与 loc + 17 之间   ->  loc + 16.5
+        - 链： loc + 5  与 loc + 6 之间    ->  loc + 5.5
 """
 # 让本包能 import 到工作区根目录的 genome_utils（两个爬虫共用一套坐标逻辑）
 import sys as _sys

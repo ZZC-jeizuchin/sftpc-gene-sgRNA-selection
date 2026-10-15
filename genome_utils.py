@@ -52,14 +52,14 @@ DISTANCE_BANDS: list[tuple[float, float]] = [
     (float("inf"), 0.1),
 ]
 
-# ⚠️ 两个网站的"位置"列锚点**不同**，这是最容易错的地方：
+#  两个网站的"位置"列锚点**不同**，这是最容易错的地方：
 #   CHOPCHOP  Genomic location = 23mer 在正链上的最左端（anchor="23mer"）
 #   CRISPOR   Position/Strand  = **PAM 区间**在正链上的左端（anchor="pam"）
 #   fw / + 链上两者相差 20 bp。
 #
 # SpCas9 切在 PAM 5' 侧 3 bp（protospacer 第 17/18 位之间）。
 #
-# ⚠️ 切点坐标取整数还是半点，**纯粹是坐标约定**，描述的是同一个物理位置：
+#  切点坐标取整数还是半点，**纯粹是坐标约定**，描述的是同一个物理位置：
 #
 #   "half"（默认）——把每个碱基当成一个**点**，坐标就是它的编号。
 #        那么切点落在两个碱基坐标的正中间 -> 必然是 x.5
@@ -85,7 +85,7 @@ PAM_FROM_23MER = {"+": 20, "-": 0}
 
 _UCSC_SEQ_API = "https://api.genome.ucsc.edu/getData/sequence"
 
-# 默认搜索窗口：SFTPC 基因座（hg38 chr8 ~22.15–22.17 Mb）
+# 默认搜索窗口：SFTPC 基因座（hg38 chr8 ~22.15-22.17 Mb）
 DEFAULT_LOCUS = {"genome": "hg38", "chrom": "chr8", "start": 22_150_000, "end": 22_170_000}
 
 # 基因座序列的本地缓存目录（两个爬虫共用一份，不要在 CWD 里乱丢 locus/）
@@ -155,7 +155,7 @@ def to_genomic(location, chrom: str | None, offset: int | None):
 def distance_to(location, strand, target_pos: int = DEFAULT_TARGET_POS,
                 chrom: str | None = None, offset: int | None = None,
                 anchor: str = "23mer"):
-    """|切点 − 目标位点|，单位 bp。"""
+    """|切点 - 目标位点|，单位 bp。"""
     cut = cut_site(location, strand, chrom, offset, anchor)
     return None if cut is None else abs(cut - target_pos)
 

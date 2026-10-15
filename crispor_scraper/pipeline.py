@@ -131,7 +131,7 @@ def fetch(
             log(f"自动定位：序列在 {locate_info['chrom']} 上，genome_offset="
                 f"{locate_info['offset']}（{locate_info['note']}）")
         else:
-            log(f"⚠ 自动定位失败：{locate_info.get('note')}；距离分将算不出来")
+            log(f" 自动定位失败：{locate_info.get('note')}；距离分将算不出来")
 
     if use_cache is None:
         use_cache = inp.use_cache
