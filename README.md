@@ -1,10 +1,10 @@
 # SFTPC 基因 sgRNA 筛选工具
 
-面向 **SFTPC 基因 CRISPR/Cas9 编辑**的 sgRNA 筛选工具：输入一段碱基序列，自动从
-**CRISPOR** 和 **CHOPCHOP** 两个网站抓取数据，按三数据加权算出综合评分并排序。
+输入一段碱基序列，自动去 CRISPOR 和 CHOPCHOP 两个网站抓数据，按三个数据加权排序，
+用来筛 SFTPC 基因 CRISPR 编辑的 sgRNA。
 
-课题背景：SFTPC 突变导致儿童间质性肺病（chILD），最常见的是 **I73T（c.218T>C）**。
-本工具用于筛选"切得动、切得准、切点离突变位点近"的 sgRNA。
+背景是 SFTPC 的 **I73T 突变（c.218T>C）**，这个突变会导致儿童间质性肺病。
+挑 sgRNA 主要看三件事：切得动、切得准、切点离突变位点近。
 
 ---
 
@@ -20,7 +20,7 @@ python run_crispor.py  --seq "ACGT..." --genome hg38 --pam NGG
 python run_chopchop.py --seq "ACGT..." --genome hg38
 ```
 
-零依赖，只用 Python 标准库（不需要 Flask）。
+不用装任何第三方库，Python 标准库就够（不需要 Flask）。
 
 ---
 
@@ -62,7 +62,7 @@ python run_chopchop.py --seq "ACGT..." --genome hg38
 
 ---
 
-## 三个网站的 guide 怎么合并（负责人定的规则）
+## 两个网站的 guide 怎么合并（负责人定的规则）
 
 按 PAM 起点 / 20nt spacer 对齐后分成三堆：
 
@@ -74,8 +74,6 @@ python run_chopchop.py --seq "ACGT..." --genome hg38
 
 **滚木(null)**：第一部分为空（两站完全没有共同的 sgRNA）时，第三项全部置 `null`，
 权重按 7:6 归一化，页面给出提示。
-
-详见下方「三个网站的 guide 怎么合并」与 `sgweb/aggregate.py` 的注释。
 
 ---
 
@@ -111,22 +109,22 @@ chopchop_scraper/         网站2 爬虫
 
 ## 踩过的坑（都在代码里注释了）
 
-### 1. 两个网站的"位置"锚点不一样 
+### 1. 两个网站的"位置"锚点不一样
 
 | 网站 | 报告值指的是 | 正链 guide 的号码是 |
 |---|---|---|
 | **CRISPOR** | **PAM 区间的左端** | PAM 起点 |
 | **CHOPCHOP** | **23 mer 的最左端** | spacer 起点 |
 
-**正链上两者差 20 bp。** 必须都先换算成 PAM 起点再算切点：
+**正链上这两个数差 20 bp，反链上又正好重合。** 所以必须先换算成同一个基准
+（本工具统一用 PAM 起点）再算切点：
 
 ```
-正链：切点 = PAM起点 - 3.5
-反链：切点 = PAM起点 + 5.5
-（SpCas9 切在 PAM 5' 侧 3 bp，即 protospacer 第 17/18 位之间）
+切点 = PAM起点 - 3（正链）  /  PAM起点 + 6（反链）
+SpCas9 切在 PAM 5' 侧 3 bp；反链方向是反的，偏移不一样。
 ```
 
-两条链差 11 bp，漏掉 `strand` 会系统性算错。实现见 `genome_utils.py`。
+漏掉 `strand` 会系统性算错。实现见 `genome_utils.py`。
 
 ### 2. CHOPCHOP 用序列提交时不给基因组坐标
 
@@ -151,7 +149,7 @@ chopchop_scraper/         网站2 爬虫
 | 场景 | 耗时 |
 |---|---|
 | 全新查询（两个网站都要排队算） | 20 秒 ~ 3 分钟 |
-| 同一个序列再跑 | **0.02 秒**（走磁盘缓存） |
+| 同一个序列再跑 | **约 0.03 秒**（走磁盘缓存，线上约 0.3 秒） |
 
 缓存目录 `.crispor_cache/` / `.chopchop_cache/` / `.genome_cache/`（已 gitignore）。
 
@@ -161,9 +159,9 @@ chopchop_scraper/         网站2 爬虫
 
 ## 输入限制
 
-- **CRISPOR 上限 2300 bp**（它自己的规矩）。整条 SFTPC 做不了，按外显子截。
-- 一条 guide = 20nt spacer + 3nt PAM = **23 bp**，所以 23 bp 输入只能出 1 条候选。
-  实测每约 5 bp 出 1 条候选（1600 bp -> 312 条）。
+- **CRISPOR 上限 2300 bp**（它自己的限制）。整条 SFTPC 放不下，得按外显子截。
+- 一条 guide = 20nt spacer + 3nt PAM = **23 bp**，所以只给 23 bp 就只能出 1 条候选。
+  实测差不多每 5 bp 出 1 条（1600 bp -> 312 条）。
 - 输入必须是**基因组序列**，不能是 cDNA（跨外显子边界的 guide 没有真实靶点）。
 
 ## 测试序列
@@ -202,9 +200,9 @@ Made by students of **Class 1, Grade 11**, *The Affiliated High School of SCNU, 
 
 | 你可以 | 你必须 |
 |---|---|
-|  自由使用、修改、分发 |  保留作者署名和版权声明 |
-|  用于商业用途 |  衍生作品也必须用 AGPL-3.0 开源 |
-|  私有修改（自己用） |  **如果你把它做成网络服务提供给别人用，必须公开完整源码** |
+| 自由使用、修改、分发 | 保留作者署名和版权声明 |
+| 用于商业用途 | 衍生作品也必须用 AGPL-3.0 开源 |
+| 私有修改（自己用） | **如果你把它做成网络服务提供给别人用，必须公开完整源码** |
 
 > AGPL 比 GPL 严格的地方就在最后一条：**部署成在线服务也算"分发"**。
 > 这是因为本项目的形态就是一个网页服务（`run_web.py`）。

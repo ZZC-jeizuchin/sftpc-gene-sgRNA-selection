@@ -11,7 +11,7 @@ python run_web.py 8080       # 换端口
 
 打开 <http://127.0.0.1:1145/>
 
-零依赖（Python 标准库 `http.server`，不需要 Flask）。
+不用装第三方库，Python 标准库的 `http.server` 就够（不需要 Flask）。
 
 ## 输入
 

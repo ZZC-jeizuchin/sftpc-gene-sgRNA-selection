@@ -8,8 +8,8 @@
 
 ```
 用户 -> https://sgss.743.world      nginx :443（宝塔管理 + 自动 SSL）
-           v proxy_pass
-        http://127.0.0.1:1146      本项目 Python 服务（systemd 常驻）
+        |  proxy_pass
+        -> http://127.0.0.1:1146    本项目 Python 服务（systemd 常驻）
 ```
 
 **Python 服务只绑 `127.0.0.1`** —— 对外只暴露 nginx 的 80/443，
