@@ -58,7 +58,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
     crispor_payload = None
     chopchop_payload = None
 
-    # ---- 网站1：Doench '16 + CFD Spec. (+ 距离回退) ----
+    # 网站1：Doench '16 + CFD Spec. (+ 距离回退)
     try:
         say("网站1 CRISPOR：提交中…")
         from crispor_scraper import CrisporInput, fetch as crispor_fetch
@@ -80,7 +80,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         result["steps"].append({"site": "crispor", "ok": False, "error": str(exc)})
         say(f"网站1 失败：{exc}")
 
-    # ---- 网站2：距离 ----
+    # 网站2：距离
     try:
         say("网站2 CHOPCHOP：提交中…")
         from chopchop_scraper import ChopchopInput, fetch as chopchop_fetch
@@ -124,7 +124,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         merged.setdefault("notes", []).append(
             "未开启硬性过滤（默认）。开启后会按负责人的 6 条规则筛掉不合格的 guide。")
 
-    # ---- 定位情况 ----
+    # 定位情况
     off = genome_offset
     for pl in (crispor_payload, chopchop_payload):
         if pl and off is None:
@@ -136,13 +136,13 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
 
     parts = merged.get("parts", {})
 
-    # ---- 滚木：「两站都有」那批为空 ----
+    # 滚木：「两站都有」那批为空
     if merged.get("kurumi"):
         merged.setdefault("warnings", []).append(
             "**滚木(null)** —— " + (merged.get("kurumi_note") or
             "两个网站没有共同的 sgRNA，第三项无法计算。")
         )
-    # ---- 定位失败 ----
+    # 定位失败
     if off is None and not merged.get("kurumi"):
         merged.setdefault("warnings", []).append(
             "这段序列**不在定位窗口内**，拿不到基因组坐标 -> 距离项无法计算。"
@@ -151,7 +151,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         )
         merged["need_offset"] = True
 
-    # ---- 信息提示（不阻止结果） ----
+    # 信息提示（不阻止结果）
     if parts.get("part3_dropped"):
         merged.setdefault("notes", []).append(
             f"有 {parts['part3_dropped']} 条只出现在 CHOPCHOP 的 sgRNA 已按规则丢弃"
@@ -184,7 +184,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write("[web] " + (fmt % args) + "\n")
 
-    # ------------------------------------------------------------ helpers
+    # helpers
 
     def _send(self, code: int, body: bytes, ctype: str = "application/json; charset=utf-8"):
         self.send_response(code)
@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code: int, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"))
 
-    # ------------------------------------------------------------ routes
+    # routes
 
     def do_GET(self):
         path = self.path.split("?", 1)[0]

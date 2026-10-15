@@ -59,7 +59,7 @@ class CrisporClient:
         self.user_agent = user_agent
         self.cache = cache if cache is not None else CrisporCache()
 
-    # ------------------------------------------------------------- 底层 HTTP
+    # 底层 HTTP
 
     def _request(
         self,
@@ -111,7 +111,7 @@ class CrisporClient:
                     time.sleep(min(2 ** attempt, 10))
         raise CrisporError(f"请求失败（已重试 {tries} 次）：{url} :: {last_err}")
 
-    # ------------------------------------------------------------------ 1. 提交
+    # 1. 提交
 
     def submit(self, inp: CrisporInput) -> str:
         """提交三个 Step 的输入，返回 batchId。"""
@@ -129,7 +129,7 @@ class CrisporClient:
             )
         return match.group(1)
 
-    # ------------------------------------------------- 缓存感知的提交 / 下载
+    # 缓存感知的提交 / 下载
 
     def submit_cached(self, inp: CrisporInput, on_progress=None) -> tuple[str, bool]:
         """先查缓存，命中就复用旧 batchId，不再提交。
@@ -156,7 +156,7 @@ class CrisporClient:
             describe={"input": inp.describe()},
         )
 
-    # ------------------------------------------------------------------ 2. 轮询
+    # 2. 轮询
 
     def fetch_status_page(self, batch_id: str) -> str:
         """整张结果页（约 265 KB，慢）。只在需要看报错信息时才拉。"""
@@ -204,7 +204,7 @@ class CrisporClient:
                 on_progress(f"第 {attempt} 次探测：还在算… 已等待 {elapsed:.0f}s")
             time.sleep(poll_interval)
 
-    # ------------------------------------------------------------------ 3. 下载
+    # 3. 下载
 
     def download_guides(
         self,
@@ -245,7 +245,7 @@ class CrisporClient:
         return self._request(url)
 
 
-# ------------------------------------------------------------------ helpers
+# helpers
 
 def _raise_if_error(html: str, stage: str) -> None:
     lowered = html.lower()

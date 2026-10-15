@@ -45,7 +45,7 @@ class GuideRecord:
     lindel: int | None
     extras: dict             # showAllScores 时的其它列
 
-    # ---- 两个"数据"的便捷读取 ----
+    # 两个"数据"的便捷读取
 
     @property
     def cut_position(self) -> int | None:

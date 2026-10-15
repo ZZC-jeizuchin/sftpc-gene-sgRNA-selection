@@ -73,17 +73,17 @@ class ChopchopConfigError(ValueError):
 class ChopchopInput:
     """一次 CHOPCHOP 查询的输入（= 首页四个框 + Options）。"""
 
-    # ---- Target（二选一）----
+    # Target（二选一）
     target: str | None = None        # 基因名 "SFTPC"，或区间 "chr8:22157000-22165000"
     sequence: str | None = None      # 或直接给序列（走 fastaInput）
     sequence_name: str = "query"
 
-    # ---- In / Using / For ----
+    # In / Using / For
     genome: str = "hg38"
     nuclease: str = "CRISPR"
     application: str = "knock-out"
 
-    # ---- Options ----
+    # Options
     target_region: str = "CODING"   # 官网默认选中 CODING
     pam: str = "NGG"                 # CHOPCHOP 默认 NGG，一般不用改
     guide_len: int = 20
@@ -99,13 +99,13 @@ class ChopchopInput:
     genome_offset: int | None = None
     genome_chrom: str | None = None   # 仅用于输出显示，如 "chr8"
     auto_locate: bool = True          # 用序列提交且没给 offset 时，自动去基因组里定位
-    # ---- 序列定位窗口（换基因时改这三个） ----
+    # 序列定位窗口（换基因时改这三个）
     locus_chrom: str | None = None    # 如 "chr8"；None = 用默认 SFTPC 基因座
     locus_start: int | None = None    # 0-based
     locus_end: int | None = None
 
 
-    # ---- 运行参数 ----
+    # 运行参数
     poll_interval: float = 3.0
     timeout: float = 600.0
     retries: int = 3
@@ -113,7 +113,6 @@ class ChopchopInput:
     job_id: str | None = None        # 指定则跳过提交，直接复用这个 jobId
     extra: dict = field(default_factory=dict)
 
-    # ---------------------------------------------------------------
 
     def split_target(self) -> tuple[str, str]:
         """返回 (geneInput, fastaInput)，对应 API 的两个字段。"""

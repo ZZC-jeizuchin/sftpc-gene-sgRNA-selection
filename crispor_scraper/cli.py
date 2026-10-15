@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    # ---- JSON 输入输出 ----
+    # JSON 输入输出
     gj = p.add_argument_group("JSON 输入 / 输出")
     gj.add_argument("--input-json", metavar="FILE",
                     help="输入 JSON 文件；给 - 表示从 stdin 读")
@@ -48,22 +48,22 @@ def build_parser() -> argparse.ArgumentParser:
     gj.add_argument("--quiet", action="store_true",
                     help="不打进度和表格，只输出 JSON（给程序调用时用）")
 
-    # ---- Step 1 ----
+    # Step 1
     g1 = p.add_argument_group("Step 1  Target sequence（三选一）")
     g1.add_argument("--seq", help="直接给 DNA 序列（ACGTN，<2300 bp）")
     g1.add_argument("--fasta", help="FASTA 文件路径（取第一条序列）")
     g1.add_argument("--region", help="染色体区间，如 chr8:22,119,000-22,125,000")
     g1.add_argument("--name", default="query", help="序列名（仅用于输出文件名，默认 query）")
 
-    # ---- Step 2 ----
+    # Step 2
     g2 = p.add_argument_group("Step 2  Genome")
     g2.add_argument("--genome", default="hg38", help="基因组，如 hg38 / hg19（默认 hg38）")
 
-    # ---- Step 3 ----
+    # Step 3
     g3 = p.add_argument_group("Step 3  PAM")
     g3.add_argument("--pam", default="NGG", help="PAM 类型，如 NGG / NAG（默认 NGG）")
 
-    # ---- 运行参数 ----
+    # 运行参数
     g4 = p.add_argument_group("运行参数（缓存优先）")
     g4.add_argument("--all-scores", action="store_true",
                     help="同时下载 Chari/Xu/Wang/Doench'14 等附加评分列")
@@ -149,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         build_parser().print_help(sys.stderr)
         return 2
 
-    # ---------------- 1. 收集查询 ----------------
+    # 1. 收集查询
     if args.input_json:
         try:
             text = sys.stdin.read() if args.input_json == "-" else \
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         print(jsonio.dumps(jsonio.error_to_json(str(exc), kind="data")), file=sys.stderr)
         return 2
 
-    # ---------------- 2. 逐个抓取 ----------------
+    # 2. 逐个抓取
     payloads: list[dict] = []
     for inp in inputs:
         try:
@@ -207,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
 
     output = payloads[0] if len(payloads) == 1 else payloads
 
-    # ---------------- 3. 输出 JSON ----------------
+    # 3. 输出 JSON
     if args.out_json:
         jsonio.write_json(args.out_json, output)
         if not args.quiet:

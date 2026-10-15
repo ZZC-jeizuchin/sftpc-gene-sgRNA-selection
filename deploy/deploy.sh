@@ -22,7 +22,7 @@ die(){ printf '\033[31m %s\033[0m\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" = "0" ] || die "需要 root"
 
-# ---------------------------------------------------------------- 1. 端口检查
+# 1. 端口检查
 say "检查端口 $PORT 是否空闲"
 if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
     OWNER=$(ss -ltnp 2>/dev/null | grep ":${PORT} " | grep -oP 'pid=\K[0-9]+' | head -1 || true)
@@ -33,7 +33,7 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
     fi
 fi
 
-# ---------------------------------------------------------------- 2. 拉代码
+# 2. 拉代码
 say "拉取 / 更新代码到 $DIR"
 if [ -d "$DIR/.git" ]; then
     git -C "$DIR" fetch --depth 1 origin main
@@ -44,7 +44,7 @@ else
 fi
 say "代码版本：$(git -C "$DIR" rev-parse --short HEAD)  文件数：$(find "$DIR" -type f -not -path '*/.git/*' | wc -l)"
 
-# ---------------------------------------------------------------- 3. systemd
+# 3. systemd
 say "安装 systemd 单元 /etc/systemd/system/${SERVICE}.service"
 if [ -f "$DIR/deploy/sftpc-sgrna.service" ]; then
     cp "$DIR/deploy/sftpc-sgrna.service" "/etc/systemd/system/${SERVICE}.service"
@@ -82,7 +82,7 @@ systemctl enable "$SERVICE" >/dev/null 2>&1 || true
 systemctl restart "$SERVICE"
 sleep 4
 
-# ---------------------------------------------------------------- 4. 验证
+# 4. 验证
 say "服务状态"
 systemctl is-active "$SERVICE" || die "服务没起来，看日志： journalctl -u ${SERVICE} -n 50"
 ss -ltnp 2>/dev/null | grep ":${PORT} " | sed 's/^/    /' || die "端口 $PORT 没在监听"
@@ -94,7 +94,7 @@ HEALTH=$(curl -s -m 10 "http://127.0.0.1:${PORT}/api/health" || true)
     || die "  health 返回异常：$HEALTH"
 curl -s -m 10 -o /dev/null -w "    index  HTTP %{http_code}  %{size_download} bytes\n" "http://127.0.0.1:${PORT}/"
 
-# ---------------------------------------------------------------- 5. nginx
+# 5. nginx
 if [ -f "$NGINX_CONF" ]; then
     say "nginx 配置已存在，测试并重载"
     nginx -t 2>&1 | sed 's/^/    /' && nginx -s reload && say "  已重载 "

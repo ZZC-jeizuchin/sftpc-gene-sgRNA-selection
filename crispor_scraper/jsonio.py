@@ -16,7 +16,7 @@ from .datasets import DatasetSpec, build_payload, resolve
 from .pipeline import CrisporResult
 
 
-# ============================================================ 输入：JSON -> CrisporInput
+# 输入：JSON -> CrisporInput
 
 def load_queries(source: str | dict | list) -> tuple[list[CrisporInput], list[str]]:
     """解析输入 JSON。
@@ -117,7 +117,7 @@ def _as_object(source: str | dict | list):
         raise CrisporConfigError(f"输入不是合法 JSON：{exc}") from exc
 
 
-# ============================================================ 输出：CrisporResult -> JSON
+# 输出：CrisporResult -> JSON
 
 def query_to_json(inp: CrisporInput) -> dict:
     """把三个 Step 原样回显（已经过校验/归一化）。"""

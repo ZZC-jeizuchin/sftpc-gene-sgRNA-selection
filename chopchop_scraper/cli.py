@@ -121,7 +121,7 @@ def main(argv=None) -> int:
                   f"saved={r.get('saved','-')}")
         return 0
 
-    # ---------------- 收集查询 ----------------
+    # 收集查询
     if args.input_json:
         try:
             text = sys.stdin.read() if args.input_json == "-" else \
@@ -147,7 +147,7 @@ def main(argv=None) -> int:
         )
         queries = [(inp, args.target_pos)]
 
-    # ---------------- 抓取 ----------------
+    # 抓取
     payloads = []
     for inp, target_pos in queries:
         try:
