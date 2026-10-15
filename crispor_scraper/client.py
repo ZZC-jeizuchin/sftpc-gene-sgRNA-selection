@@ -1,40 +1,11 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""与 CRISPOR CGI 接口通信的客户端。
+"""CRISPOR CGI 客户端。它没有官方 API，但前端本身就是一套 CGI 参数接口。
 
-CRISPOR 没有官方 REST API，但它网页前端用的就是一套 CGI 参数接口，
-抓这套接口比抓渲染后的 HTML 稳定得多（列顺序、样式变了都不影响）。
-
-实测到的三个端点：
-
-1) 提交任务
-   POST https://crispor.gi.ucsc.edu/crispor.py
-        seq=<序列或染色体区间>&org=hg38&pam=NGG&name=<名字>&submit=SUBMIT
-   -> 返回的 HTML 里含  history.replaceState('crispor.py', document.title, '?batchId=XXXX')
-
-2) 轮询进度
-   GET  https://crispor.gi.ucsc.edu/crispor.py?batchId=XXXX
-   -> 未完成：页面含 "Status" / "refresh"，无结果表
-   -> 已完成：页面含 "MIT Specificity" 与 download 链接
-
-3) 下载结果（关键，直接是 TSV）
-   GET  https://crispor.gi.ucsc.edu/crispor.py?batchId=XXXX&download=guides&format=tsv
-   GET  ...&showAllScores=1&download=guides&format=tsv
+    POST /crispor.py   seq=&org=&pam=&name=&submit=SUBMIT  -> HTML 里带 batchId
+    GET  /crispor.py?batchId=X                             -> 轮询进度
+    GET  /crispor.py?batchId=X&download=guides&format=tsv  -> 结果 TSV
 """
 
 from __future__ import annotations

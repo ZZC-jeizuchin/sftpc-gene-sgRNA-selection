@@ -1,45 +1,14 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """三个数据合并 + 加权排序。
 
-权重（四个数据的定义.txt）：
-    7  Doench '16   均匀映射到 0-1（高考赋分式：按名次均匀铺开）
-    6  CFD Spec     除以 100
-    4  距离          分档打分（<20bp=1.0, 20-50=0.9, 50-100=0.7, 100-200=0.4, >200=0.1）
-                     + 覆盖奖励 0.1，上限 1.0
+权重 7:6:4（Doench'16 均匀映射到 0-1 / CFD 除以 100 / 距离分档+覆盖修正），
+    final = (7*d16 + 6*cfd/100 + 4*dist) / 17
 
-    final = (7*d16' + 6*cfd/100 + 4*dist) / 17
-
-=====================================================================
-负责人定的三部分规则：
-
-    按 20nt spacer / PAM 起点对齐后分三堆：
-        第一部分 = 两个网站都有            -> 三项齐全
-        第二部分 = cris(CRISPOR) 有、跳跳(CHOPCHOP) 没有
-        第三部分 = 跳跳有、cris 没有        -> 【直接扔掉】
-
-    第二部分的第三项：它没有跳跳的切割位点数据。
-        -> 能算就算（CRISPOR 其实也给切点，实测和 CHOPCHOP 完全一致）
-        -> 算不出来才用【第一部分第三项得分的平均值】顶替
-
-    极端情况：第一部分为空（两站完全不重合）
-        -> 第三项 = 滚木 = null
-=====================================================================
+按 PAM 起点对齐后分三堆：两站都有、仅 CRISPOR、仅 CHOPCHOP（丢掉）。
+仅 CRISPOR 那批的第三项优先真算，算不出才用两站都有的平均值顶替；
+两站都有的那批为空时（滚木），第三项全部置 null。
 """
 
 from __future__ import annotations
@@ -51,22 +20,13 @@ from genome_utils import (
 WEIGHTS = {"doench16": 7, "cfd_spec": 6, "distance": 4}
 TOTAL_WEIGHT = sum(WEIGHTS.values())          # 17
 
-# 覆盖奖励（负责人 2026-10-06 最终定版）：
-#   guide 的 20nt 区间压住目标点 (X <= 目标 <= X+20) -> 第三项 +0.1
-#   没压住                                        -> 第三项 -0.1
-#   第三项上限 1.0，下限 0.0
-#
-# 【为什么必须要有那个 -0.1】：
-#   切点永远在 [X, X+20] 这个窗口内部（正链偏移 17，反链偏移 6），
-#   所以"压住目标"必然意味着切点距离 < 20bp -> 分档本来就是 1.0。
-#   如果只加不减，1.0+0.1 会被上限 1.0 吃掉，加分永远是废的。
-#   加上 -0.1 之后：压住的 = 1.0，没压住的 = 0.9，两者才真正分开。
+# 覆盖奖励：20nt 区间压住目标点则 +0.1，没压住则 -0.1。
+# 减分是必须的 —— 压住目标的切点必然 <20bp、分档本来就是 1.0，
+# 只加不减的话 1.0+0.1 会被上限吃掉，加分毫无作用。
 COVERAGE_BONUS = 0.1      # 压住目标点 -> +
 COVERAGE_PENALTY = 0.1    # 没压住     -> -
 THIRD_ITEM_CAP = 1.0
-# 下限取 0.1（= 分档表最低那一档），不是 0。
-# 原因：扣 0.1 不能把最差档（>200bp = 0.1）压到 0 —— 那样"超出范围"的会变成 0 分，
-# 而负责人要求它们保持 0.1。所以扣分只对 >=0.4 的那几档实际起作用。
+# 下限取最低档 0.1，不取 0：扣分不能把 >200bp 那档压成 0 分。
 THIRD_ITEM_FLOOR = 0.1
 
 
@@ -107,12 +67,7 @@ def spacer_of(target_seq: str | None) -> str | None:
     return s[:20] if len(s) >= 20 else None
 
 
-# 覆盖奖励用哪个窗口来判断「压住了目标点」：
-#   "guide_start"（默认，负责人 2026-10-06 指定）
-#         X = sgRNA 起点（= CHOPCHOP 网页上 chr8 后面那个数字）
-#         条件：X <= 目标点 <= X+20
-#   "spacer"（原来的做法）
-#         用 20nt spacer 区间；正链 [pam-20, pam-1]，反链 [pam+3, pam+22]
+# 覆盖判定用哪个窗口："guide_start"（X <= 目标 <= X+20）或 "spacer"
 COVERAGE_WINDOW = "guide_start"
 
 
@@ -160,10 +115,7 @@ def third_item_value(distance, pam_start, strand, target_pos,
     return round(val, 6), base, round(delta, 6)
 
 
-# =====================================================================
-# 硬性过滤规则（来自负责人的《硬性过滤规则.xls》，6 条）
-# 通过 merge(hard_filter=True) 开启；默认关闭。
-# =====================================================================
+# 硬性过滤规则（6 条），默认关闭，用 merge(hard_filter=True) 开启
 HARD_FILTER_RULES = [
     {"id": "length",  "name": "spacer 长度",
      "rule": "必须恰好 20 nt",              "why": "长度 != 20 nt",
@@ -232,13 +184,8 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
           hard_filter: bool = False) -> dict:
     """合并 + 分三部分 + 加权排序。
 
-    third_mode:
-        "auto"     能真算就真算，算不出来用第一部分平均值（推荐）
-        "average"  完全按负责人原话：第二部分一律用第一部分平均值
-        "computed" 第二部分只用真算值（算不出就 null）
-    hard_filter:
-        True  -> 先按 6 条硬性过滤规则筛掉不合格的 guide，再评分排序
-        False -> 不做过滤（默认）
+    third_mode: "auto"（默认，能真算就真算）/"average"/"computed"
+    hard_filter: True 则先用 6 条硬性规则过滤再评分排序
     """
     # ---------------------------------------------------------- 1. 建索引
     def index(payload):
@@ -270,9 +217,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         p = c.get("pam_start") if c.get("pam_start") is not None else h.get("pam_start")
         seqp = c.get("seq_pam_start") if c.get("seq_pam_start") is not None else h.get("seq_pam_start")
         st = normalize_strand(src.get("strand"))
-        # sgRNA 起点 = 23mer 在正链上的最左端（= CHOPCHOP 网页上显示的 Genomic location）
-        #   + 链：PAM 在右端，spacer 起点 = PAM起点 - 20
-        #   - 链：PAM 在左端，起点就是 PAM 起点
+# sgRNA 起点 = 23mer 最左端（+ 链为 PAM起点-20，- 链就是 PAM 起点）
         def gstart(pam):
             if pam is None:
                 return None

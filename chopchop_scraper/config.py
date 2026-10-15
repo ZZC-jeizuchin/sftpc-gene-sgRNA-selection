@@ -1,30 +1,7 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""CHOPCHOP 的输入定义。
-
-对应 CHOPCHOP 首页那四个框：
-
-    Target            -> target      （基因名 / 染色体区间，或 sequence 直接给序列）
-    In  (genome)      -> genome      （hg38 / hg19 ...）
-    Using (nuclease)  -> nuclease    （CRISPR / CAS13 / TALEN / NICKASE / CPF1）
-    For  (application)-> application （knockout / knockin / ...）
-
-外加高级选项（Options 页）：target_region / pam / guide_len / gc 过滤 / scoring。
+"""CHOPCHOP 的输入定义（首页四个框 + Options 页的高级选项）。
 """
 
 from __future__ import annotations
@@ -118,10 +95,7 @@ class ChopchopInput:
     consensus_union: bool = False
     exclude_snv: bool = False        # -rm1perfOff：排除在 SNP 上有 1 个错配的 guides
 
-    # ---- 序列模式的坐标换算 ----
-    # 用 sequence（fastaInput）提交时，CHOPCHOP 给的是 "seq:N"（**序列内坐标**），
-    # 需要 genome_offset = 这段序列在基因组上的 0-based 起始坐标，
-    # 才能换算：基因组坐标 = genome_offset + N
+    # 序列提交时 CHOPCHOP 回 "seq:N"（序列内坐标），换基因组坐标要加 genome_offset
     genome_offset: int | None = None
     genome_chrom: str | None = None   # 仅用于输出显示，如 "chr8"
     auto_locate: bool = True          # 用序列提交且没给 offset 时，自动去基因组里定位

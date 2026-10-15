@@ -1,46 +1,9 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""JSON 输入解析 + JSON 输出构造。
+"""JSON 输入解析 / 输出构造。字段见 query.example.json / output.example.json。
 
-输入 JSON（一次查询）：
-{
-  "step1": {"seq": "ACGT..."}        // 或 {"region": "chr8:..."} 或 {"fasta": "x.fa"}
-  "step2": {"genome": "hg38"},
-  "step3": {"pam": "NGG"},
-  "name": "sftpc",
-  "data": ["doench16", "cfd_spec"],  // 要哪几个数据，缺省=全部
-  "batch_id": "E7soURXwF4IZYUeAKOwP",// 可选，指定则跳过提交
-  "options": {"all_scores": false, "cache": true,
-              "timeout": 900, "poll_interval": 3, "retries": 3}
-}
-
-也接受：直接一个数组（批量），或 {"queries": [ ... ]}。
-
-输出 JSON（每个数据独立成块，互不干扰）：
-{
-  "ok": true,
-  "query":   { "step1": {...}, "step2": {...}, "step3": {...}, "name": "..." },
-  "crispor": { "batch_id": "...", "url": "...", "n_guides": 52, "from_cache": false },
-  "datasets": {
-      "doench16": { ...元信息..., "count": 52, "stats": {...}, "values": [ {...}, ... ] },
-      "cfd_spec": { ... }
-  }
-}
+也接受直接给一个数组（批量），或 {"queries": [...]}。
 """
 
 from __future__ import annotations

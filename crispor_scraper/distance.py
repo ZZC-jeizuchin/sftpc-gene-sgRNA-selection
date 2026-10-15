@@ -1,29 +1,10 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""第三个数据（CRISPOR 版）：切割位点与 chr8:22,163,096 的距离。
+"""第三个数据（CRISPOR 版）。坐标逻辑与 CHOPCHOP 版共用 genome_utils。
 
-和 CHOPCHOP 版**共用同一套坐标逻辑**（genome_utils），保证两边口径一致：
-    CRISPOR 的 Position/Strand = **PAM 区间**在输入序列上的左端（anchor="pam"）
-    CHOPCHOP 的 Genomic location = **23mer** 在基因组上的最左端（anchor="23mer"）
-    fw/正链上两者相差 20 bp，所以必须区分，不能共用同一个偏移。
-
-切点：正链 pam_start-3.5，反链 pam_start+5.5（SpCas9 切在 PAM 前 3 bp）
-序列模式换算：基因组坐标 = genome_offset + 序列内位置
+    CRISPOR   Position/Strand   = PAM 区间左端（anchor="pam"）
+    CHOPCHOP  Genomic location  = 23mer 最左端（anchor="23mer"）
 """
 
 from __future__ import annotations

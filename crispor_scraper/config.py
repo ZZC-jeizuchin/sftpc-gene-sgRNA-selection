@@ -1,29 +1,7 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Step1 / Step2 / Step3 三个输入的统一定义与校验。
-
-对应 CRISPOR 首页那张表单：
-
-    Step 1  Target Sequence : 序列 / FASTA 文件 / 染色体区间   -> 表单字段 seq
-    Step 2  Select a genome : 基因组，如 hg38 / hg19         -> 表单字段 org
-    Step 3  Select a PAM    : PAM 类型，如 NGG / NAG         -> 表单字段 pam
-
-另外 name（可选序列名）在表单里是 Step1 的一部分，这里也一起放进 Step1 组。
+"""Step1/2/3 三个输入的统一定义与校验（对应 CRISPOR 首页表单的 seq/org/pam）。
 """
 
 from __future__ import annotations

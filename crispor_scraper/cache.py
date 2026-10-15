@@ -1,33 +1,10 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""磁盘缓存：避免重复请求这个很慢的网站。
+"""磁盘缓存，两层：
 
-两层：
-
-1) 语义缓存（index.json）
-   请求指纹(seq+org+pam+allScores) -> batchId + TSV 文件名
-   - 已经有 TSV：直接返回，0 次网络请求
-   - 只有 batchId：跳过"提交"（提交最慢），直接去轮询这个旧批次
-
-2) 原始响应缓存（raw/ 目录）
-   URL+参数 的 sha1 -> 原始响应文本。
-   下载类请求（TSV）走这层，重复下载瞬间返回；
-   轮询类请求不走这层（否则永远看到旧的"排队中"页面）。
+    index.json  请求指纹 -> batchId + TSV 文件名（已有 TSV 就直接返回）
+    raw/        URL 的 sha1 -> 原始响应；只缓存下载类请求，轮询不走这层
 """
 
 from __future__ import annotations
