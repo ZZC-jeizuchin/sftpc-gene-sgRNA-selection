@@ -9,7 +9,8 @@
 
 ## 1. 有没有查询 API？
 
-**没有官方 REST API**，但它前端用的是一套 CGI 参数接口，直接调这套接口比爬渲染后的 HTML 稳得多。
+**没有官方 REST API**，不过它前端用的就是一套 CGI 参数接口。
+直接调这套接口比去爬渲染后的 HTML 稳得多。
 本项目用的是这套（已实测）：
 
 | 用途 | 请求 | 说明 |
@@ -18,7 +19,7 @@
 | 取结果 | `GET /crispor.py?batchId=X&download=guides&format=tsv` | **6 KB TSV**，直接含两个数据 |
 | 附加分 | 再加 `&showAllScores=1` | 多出 Chari / Xu / Wang / Doench'14 / CCTop |
 | 脱靶明细 | `GET /crispor.py?batchId=X&download=offtargets&format=tsv` | 每个脱靶位点的 CFD 切割分 |
-| 轻量状态 | `GET /crispor.py?batchId=X&ajaxStatus=1` |  服务器上已坏（HTTP 500），**本项目不用它** |
+| 轻量状态 | `GET /crispor.py?batchId=X&ajaxStatus=1` | 服务器上已坏（HTTP 500），**本项目不用它** |
 
 ## 2. 三个 Step 的输入
 
