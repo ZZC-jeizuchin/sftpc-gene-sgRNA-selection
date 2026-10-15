@@ -26,7 +26,7 @@ class CrisporCache:
         self.index_path = self.root / "index.json"
         self._index: dict | None = None
 
-    # ------------------------------------------------------------ 索引读写
+    # 索引读写
 
     def _load_index(self) -> dict:
         if self._index is None:
@@ -48,7 +48,7 @@ class CrisporCache:
             encoding="utf-8",
         )
 
-    # ------------------------------------------------------------ 请求指纹
+    # 请求指纹
 
     @staticmethod
     def request_key(seq: str, org: str, pam: str, all_scores: bool) -> str:
@@ -64,7 +64,7 @@ class CrisporCache:
     def _entry(self, key: str) -> dict:
         return self._load_index().get(key, {})
 
-    # ------------------------------------------------------ 语义缓存 get/put
+    # 语义缓存 get/put
 
     def get_batch_id(self, key: str) -> str | None:
         return self._entry(key).get("batch_id") if self.enabled else None
@@ -128,7 +128,7 @@ class CrisporCache:
             rows.append({"key": key, **entry})
         return rows
 
-    # ------------------------------------------------------- 原始响应缓存
+    # 原始响应缓存
 
     def raw_path(self, method: str, url: str, body: bytes | None) -> Path:
         digest = hashlib.sha1(

@@ -187,7 +187,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     third_mode: "auto"（默认，能真算就真算）/"average"/"computed"
     hard_filter: True 则先用 6 条硬性规则过滤再评分排序
     """
-    # ---------------------------------------------------------- 1. 建索引
+    # 1. 建索引
     def index(payload):
         out = {}
         if not payload:
@@ -204,12 +204,12 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     cri = index(crispor_payload)
     cho = index(chopchop_payload)
 
-    # ---------------------------------------------------------- 2. 分三部分
+    # 2. 分三部分
     part1_keys = sorted(set(cri) & set(cho), key=str)      # 两站都有
     part2_keys = sorted(set(cri) - set(cho), key=str)      # cris 有、跳跳没有
     part3_keys = sorted(set(cho) - set(cri), key=str)      # 跳跳有、cris 没有 -> 扔掉
 
-    # ---------------------------------------------------------- 3. 组行
+    # 3. 组行
     def make_row(key, kind):
         c = cri.get(key, {})
         h = cho.get(key, {})
@@ -246,7 +246,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     rows2 = [make_row(k, 2) for k in part2_keys]
     all_rows = rows1 + rows2
 
-    # ------------------------------------------------ 3.5 硬性过滤（可选）
+    # 3.5 硬性过滤（可选）
     filtered_rows: list[dict] = []
     if hard_filter:
         kept: list[dict] = []
@@ -266,7 +266,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         rows1 = [r for r in all_rows if r["part"] == 1]
         rows2 = [r for r in all_rows if r["part"] == 2]
 
-    # ---------------------------------------------------------- 4. 第三项
+    # 4. 第三项
     # 第一部分：分档 + 覆盖奖励
     for r in rows1:
         v, base, extra = third_item_value(r["distance"], r["pam_start"], r["strand"], target_pos,
@@ -298,7 +298,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         r["third_item"] = use
         r["third_source"] = src
 
-    # ---------------------------------------------------------- 5. 滚木
+    # 5. 滚木
     #   第一部分为空 = 两个网站完全不重合 -> 第三项全部 = null
     kurumi = (len(rows1) == 0)
     if kurumi:
@@ -311,12 +311,12 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
     else:
         note = None
 
-    # ---------------------------------------------------------- 6. 其他两项
+    # 6. 其他两项
     d16 = uniform_map([r["doench16"] for r in all_rows], higher_is_better=True)
     cfd_norm = [(None if r["cfd_spec"] is None else round(r["cfd_spec"] / 100.0, 6))
                 for r in all_rows]
 
-    # ---------------------------------------------------------- 7. 加权
+    # 7. 加权
     out = []
     for i, r in enumerate(all_rows):
         parts, missing, used = 0.0, [], 0
@@ -356,7 +356,7 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
             "part2": len(rows2),
             "part3_dropped": len(part3_keys),
         },
-        # ---- 硬性过滤 ----
+        # 硬性过滤
         "hard_filter": hard_filter,
         "hard_filter_rules": HARD_FILTER_RULES,
         "filtered_count": len(filtered_rows),

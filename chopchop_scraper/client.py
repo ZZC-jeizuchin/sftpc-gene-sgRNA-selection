@@ -43,7 +43,7 @@ class ChopchopClient:
         self.user_agent = user_agent
         self.cache = cache if cache is not None else ChopchopCache()
 
-    # ------------------------------------------------------------- HTTP
+    # HTTP
 
     def _request(self, url, data=None, use_cache=True, retries=None, timeout=None,
                  method=None):
@@ -90,7 +90,7 @@ class ChopchopClient:
                 time.sleep(min(2 ** attempt, 10))
         raise ChopchopError(f"请求失败（重试 {tries} 次）：{url} :: {last_err}")
 
-    # ------------------------------------------------------------- 提交
+    # 提交
 
     def submit(self, inp: ChopchopInput) -> str:
         form = inp.to_form()
@@ -116,7 +116,7 @@ class ChopchopClient:
         self.cache.put_job_id(key, job_id, describe={"input": inp.describe()})
         return job_id, False
 
-    # ------------------------------------------------------------- 结果
+    # 结果
 
     def result_url(self, job_id: str, name: str) -> str:
         return RESULTS_URL.format(job_id=job_id, name=name)

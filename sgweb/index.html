@@ -129,7 +129,7 @@
   .muted{color:var(--ink3)}
   .scorecell{min-width:104px}
 
-  /* ---- 推荐候选 ---- */
+  /* 推荐候选 */
   .picks{padding:14px 16px; border-bottom:1px solid var(--line2); background:#fbfdfc}
   .picks .head{display:flex; align-items:center; gap:10px; margin-bottom:11px}
   .picks .head h3{margin:0; font-size:12px; letter-spacing:.7px; text-transform:uppercase; color:var(--best); font-weight:700}
@@ -149,7 +149,7 @@
   .pick .bar{margin-top:7px}
   .scorecell .v{font-weight:650; font-variant-numeric:tabular-nums}
 
-  /* ---------- 硬性过滤：开关 + 圈 i 说明按钮 ---------- */
+  /* 硬性过滤：开关 + 圈 i 说明按钮 */
   .switchrow{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;margin-top:2px}
   .switchrow input{position:absolute;opacity:0;width:0;height:0}
   .switch{width:42px;height:23px;border-radius:99px;background:#d5dbe3;position:relative;
@@ -202,7 +202,7 @@
 </header>
 
 <main>
-  <!-- ================= 输入 ================= -->
+  <!-- 输入 -->
   <section class="card">
     <h2>输入</h2>
     <div class="body">
@@ -315,7 +315,7 @@
     </div>
   </section>
 
-  <!-- ================= 结果 ================= -->
+  <!-- 结果 -->
   <section class="card" id="resultCard">
     <h2>加权结果</h2>
     <div id="result">
@@ -332,7 +332,7 @@
 const $ = id => document.getElementById(id);
 let busy = false;
 
-/* ---------- 序列计数 ---------- */
+/* 序列计数 */
 $('seq').addEventListener('input', () => {
   const n = $('seq').value.replace(/\s+/g, '').length;
   $('counter').textContent = n + ' bp';
@@ -353,7 +353,7 @@ $('seq').addEventListener('input', () => {
   el.innerHTML = `预计约 <b>${est}</b> 条候选 guide`;
 });
 
-/* ---------- 碱基着色 ---------- */
+/* 碱基着色 */
 function colorSeq(s){
   const pam = s.slice(-3), core = s.slice(0, -3);
   const paint = t => [...t].map(c => `<span class="b-${c}">${c}</span>`).join('');
@@ -364,14 +364,14 @@ const fmt = (v, d = 2) => (v === null || v === undefined) ? '<span class="muted"
 const pts = (v, d = 2) => (v === null || v === undefined) ? '<span class="muted">—</span>' : (Number(v) * 100).toFixed(d);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* ---------- 日志 ---------- */
+/* 日志 */
 function setStatus(lines, kind){
   const dot = k => `<span class="dot ${k||''}"></span>`;
   $('status').innerHTML = lines.map(l => `<div class="line">${dot(l.kind)}<span>${esc(l.text)}</span></div>`).join('');
   $('pill').textContent = kind || '就绪';
 }
 
-/* ---------- 主流程 ---------- */
+/* 主流程 */
 async function analyze(){
   if (busy) return;
   const sequence = $('seq').value.trim();
@@ -464,7 +464,7 @@ function render(d){
   const warn = (d.warnings && d.warnings.length)
     ? `<div class="warnbar">⚠ ${d.warnings.map(w => esc(w).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>⚠ ')}</div>` : '';
 
-  // ---- 推荐候选 ----
+  // 推荐候选
   const pickCards = picks.map(r => `
     <div class="pick ${r.rank === 1 ? 'first' : ''}">
       <span class="rk">${r.rank === 1 ? '最佳' : 'No.' + r.rank}</span>
@@ -526,7 +526,7 @@ function render(d){
                 ? ' ' + (r.third_bonus > 0 ? '+' : '-') + pts(Math.abs(r.third_bonus), 0) : '') : ''}</div></td>`,
       `<td class="num">${r.third_item === null || r.third_item === undefined
           ? '<span class="muted">—</span>' : pts(r.third_item)}</td>`,
-      // ---- 是否覆盖突变位点 ----
+      // 是否覆盖突变位点
       `<td class="num">${r.covers_target
           ? '<span class="yesno yes">是</span>'
           : '<span class="yesno no">否</span>'}${r.gc_content != null
@@ -535,7 +535,7 @@ function render(d){
          ${r.weight_used && r.weight_used !== d.total_weight
             ? `<div class="muted" style="font-size:10.5px">权重比 ${r.weight_used}/${d.total_weight}</div>` : ''}
          <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div></td>`,
-      // ---- sgRNA 来源（这条 guide 是哪个网站给的）----
+      // sgRNA 来源（这条 guide 是哪个网站给的）
       `<td>${
           r.part === 1
             ? `<span class="tag" title="这条 sgRNA 由【两个网站共同给出】：CRISPOR 和 CHOPCHOP 都有。对应负责人说的「第一部分」。" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">两站都有</span>`
@@ -543,7 +543,7 @@ function render(d){
                 ? `<span class="tag" title="这条 sgRNA【只有 CRISPOR 有，CHOPCHOP 没有给出】。对应负责人说的「第二部分」。" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">仅 CRISPOR</span>`
                 : '<span class="tag">—</span>')
         }</td>`,
-      // ---- 突变距离评分的来源（这个分数是怎么来的）----
+      // 突变距离评分的来源（这个分数是怎么来的）
       `<td>${
           r.third_source === 'avg_part1'
             ? '<span class="tag" title="这条 sgRNA 自身的切点算不出突变距离评分，借用了「两站都有」那批的平均值" style="border-color:#fde3c7;color:#b45309;background:#fff7ed">平均值顶替</span>'
@@ -595,7 +595,7 @@ function render(d){
   $('pill').textContent = '完成';
 }
 
-/* ---------- 示例序列（hg38 chr8:22162801-22163400，含 c.218） ---------- */
+/* 示例序列（hg38 chr8:22162801-22163400，含 c.218） */
 const SAMPLE = 'GGGAAGCAGCAGGGAGAGACAGGTGAAGCAGGCTCTCTTGGGTCCCTCAAAACTAGACCCTGCTTCTAAGCTTCTATGTGTCTATGGGTTTGTTAGAATCCAGGCCACCTCCTCCAAGAAGCCTTCTCTGATCTCCTCAGCCCTTCCCTGTCCATCCATCGCATCGGCTGTCCAGCCCTAGGCAGCCGTGGGAGGGTGTTCAGCTTGTATAGGGAGAAGAGGGGACAGCCTCATGACCTCATGCCTGTCTCCTTGCCTGCCCCACCGTGTCAGGACTACTCCGCAGCTCCCCGGGGCCGATTTGGCATTCCCTGCTGCCCAGTGCACCTGAAACGCCTTCTTATCGTGGTGGTGGTGGTGGTCCTCATCGTCGTGGTGATTGTGGGAGCCCTGCTCATGGGTCTCCACATGAGCCAGAAACACACGGAGATGGTGAGAGGTGTGGGATGCACAGCAGTGGGCACAGGACATGCCAGACAGCGGGGCTAGGTGGGATGGGCGATAGGAAACTGTCCAAGGGGAGTGGAGGGGAGGAGGCAAGGGGCACAGCTAGAAGGAAAGAGGCACGAACCAGGCAGCAACCCAGCTCAGGCTTTTCCACAAGGCCCCTGCCCCGCAGCAGGACAGCCAGCTCCCTCCAGCACCTGGTTCCACTCAGCCTCCCTGAACTCTTGGGAAAGAGGGAAGCGCATTTGAGTACAGAGGCCTGAGTATGGGGATGGGTACCACTGGCTGAGTAGGAAAGGGGAAGACCAGGTGGCTCCATGCCCTTTCCCCAGGTTCTGGAGATGAGCATTGGGGCGCCGGAAGCCCAGCAACGCCTGGCCCTGAGTGAGCACCTGGTTACCACTGCCACCTTCTCCATCGGCTCCACTGGCCTCGTGGTGTATGACTACCAGCAGGTGGGTATGCCCAGACCTCCTGACCCTGGGACCAATGACAAGGCTCTGCTAGAGCCACCCAGCTGGGCCACTTCATCCACATCCATCTCTCCCTCTCCTCCAGACCTTTTTTGCCTGAGCCCCAGATTCTAGTATGACTCCCGTGCCCAACCTAGAGGGAGGTGGCTAAGGACCTGGGTCAGGGAGAGAGCAGGGCAGGGACCCCCGAATGATCTCCAGCATTCTGTGCCTAGCTGCTGATCGCCTACAAGCCAGCCCCTGGCACCTGCTGCTACATCATGAAGATAGCTCCAGAGAGCATCCCCAGTCTTGAGGCTCTCACTAGAAAAGTCCACAACTTCCAGGTGTGTGTGTGTGGGTGAAAAGAGTGGGCTGTCTCCCTCCCAGGGCTGCTGGGAGGAGTGTCCGAATGGTGGCTATTTGTCACCTGTAAAGCACTGTTCCTCATTGGCTGCCAGCTGACTGCCCCTCTCCTATTCCCCTGCACGACTCCTTTCCTTCCCACCCCACTGCCAAGCTGCTGGGCTCAGCTGAGTCCACTCACTACCTGGTGGCTTCTGACTCTAGCACAGCCCCTCTTTACTGATGAGAAAACTGAGGCTCAGAGAGATTGCCTGATATACCTGAAGTCCCACAATAAGGGCTGCACATGGGATAGAAACTCACTTCCTACATTCCAGATGGAATGCTCTCTGCAG';
 
 $('sample').addEventListener('click', () => {
@@ -603,7 +603,7 @@ $('sample').addEventListener('click', () => {
   $('seq').dispatchEvent(new Event('input'));
 });
 
-/* ==================== 硬性过滤：开关 + 圈 i 说明 ==================== */
+/* 硬性过滤：开关 + 圈 i 说明 */
 const FILTER_RULES = [
   ["spacer 长度", "必须恰好 20 nt", "长度 != 20 nt",
    "SpCas9 的 spacer 固定 20 nt，多一个少一个都不行。"],

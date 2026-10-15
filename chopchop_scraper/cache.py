@@ -27,7 +27,7 @@ class ChopchopCache:
         self.index_path = self.root / "index.json"
         self._index: dict | None = None
 
-    # ------------------------------------------------------------ 索引
+    # 索引
 
     def _load_index(self) -> dict:
         if self._index is None:
@@ -48,7 +48,7 @@ class ChopchopCache:
             json.dumps(self._load_index(), ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-    # ------------------------------------------------------------ 指纹
+    # 指纹
 
     @staticmethod
     def request_key(form: dict) -> str:
@@ -65,7 +65,7 @@ class ChopchopCache:
     def _entry(self, key: str) -> dict:
         return self._load_index().get(key, {})
 
-    # ------------------------------------------------------ 语义 get/put
+    # 语义 get/put
 
     def get_job_id(self, key: str) -> str | None:
         return self._entry(key).get("job_id") if self.enabled else None
@@ -118,7 +118,7 @@ class ChopchopCache:
     def show_saved(self) -> list[dict]:
         return [{"key": k, **v} for k, v in self._load_index().items()]
 
-    # ------------------------------------------------------- 原始响应缓存
+    # 原始响应缓存
 
     def raw_path(self, method: str, url: str, body: bytes | None) -> Path:
         digest = hashlib.sha1(

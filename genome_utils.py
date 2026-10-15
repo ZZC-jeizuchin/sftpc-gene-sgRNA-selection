@@ -19,7 +19,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# ============================================================ 常量
+# 常量
 
 # 目标位点：SFTPC c.218 / I73T，hg38 chr8:22,163,096
 DEFAULT_TARGET_POS = 22_163_096
@@ -55,7 +55,7 @@ DEFAULT_LOCUS = {"genome": "hg38", "chrom": "chr8", "start": 22_150_000, "end": 
 DEFAULT_LOCUS_CACHE = ".genome_cache"
 
 
-# ============================================================ 坐标换算
+# 坐标换算
 
 def normalize_strand(strand: str) -> str | None:
     if strand is None:
@@ -144,7 +144,7 @@ def bands_json() -> list[dict]:
     return [{"lt": (None if u == float("inf") else u), "score": s} for u, s in DISTANCE_BANDS]
 
 
-# ============================================================ 序列定位
+# 序列定位
 
 def _revcomp(s: str) -> str:
     return s.translate(str.maketrans("ACGTN", "TGCAN"))[::-1]

@@ -129,7 +129,7 @@ def fetch(
 
     key = CrisporCache.key_from_input(inp)
 
-    # ---- 1. 结果已经在缓存里 ----
+    # 1. 结果已经在缓存里
     if use_cache:
         cached_tsv = cache.get_tsv(key)
         if cached_tsv:

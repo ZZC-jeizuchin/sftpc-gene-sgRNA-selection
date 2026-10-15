@@ -48,7 +48,7 @@ class DatasetSpec:
         }
 
 
-# --------------------------------------------------------------------- 数据 1
+# 数据 1
 
 DOENCH16 = DatasetSpec(
     id="doench16",
@@ -69,7 +69,7 @@ DOENCH16 = DatasetSpec(
     extract=lambda r: _score(r.doench16),
 )
 
-# --------------------------------------------------------------------- 数据 2
+# 数据 2
 
 CFD_SPEC = DatasetSpec(
     id="cfd_spec",
@@ -91,7 +91,7 @@ CFD_SPEC = DatasetSpec(
 )
 
 
-# --------------------------------------------------------------------- 注册表
+# 注册表
 
 def _score(value):
     """CRISPOR 用负数当"算不出"的哨兵值（序列含 N、Cpf1、重复序列等）。

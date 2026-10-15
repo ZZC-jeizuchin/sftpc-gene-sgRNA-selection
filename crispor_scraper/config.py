@@ -60,19 +60,19 @@ class CrisporInput:
         sequence   : 直接给序列字符串
     """
 
-    # ---- Step 1: Target sequence ----
+    # Step 1: Target sequence
     sequence: str | None = None
     region: str | None = None
     fasta_path: str | None = None
     name: str = "query"          # 可选：输出里显示的序列名
 
-    # ---- Step 2: Select a genome ----
+    # Step 2: Select a genome
     genome: str = "hg38"
 
-    # ---- Step 3: Select a PAM ----
+    # Step 3: Select a PAM
     pam: str = "NGG"
 
-    # ---- 运行参数（不影响三个 Step 的语义） ----
+    # 运行参数（不影响三个 Step 的语义）
     show_all_scores: bool = False   # True 时额外下载 Chari/Xu/Wang/Doench'14 等分
     poll_interval: float = 5.0      # 轮询间隔（秒）
     timeout: float = 900.0          # 单次查询最长等待（秒）
@@ -80,19 +80,18 @@ class CrisporInput:
     batch_id: str | None = None     # 指定则跳过提交，直接复用这个 batchId
     use_cache: bool = True          # False = 完全不用磁盘缓存
 
-    # ---- 第三个数据（距离）用 ----
+    # 第三个数据（距离）用
     target_pos: int = 22_163_096    # 目标位点（hg38 chr8，SFTPC c.218 / I73T）
     genome_offset: int | None = None  # 输入序列的基因组 0-based 起点；不给则自动定位
     genome_chrom: str | None = None   # 仅显示用，如 chr8
     auto_locate: bool = True          # 只给碱基时，自动去基因组定位 offset
-    # ---- 序列定位窗口（换基因时改这三个） ----
+    # 序列定位窗口（换基因时改这三个）
     locus_chrom: str | None = None    # 如 "chr8"；None = 用默认 SFTPC 基因座
     locus_start: int | None = None    # 0-based
     locus_end: int | None = None
 
     extra: dict = field(default_factory=dict)
 
-    # ---------------------------------------------------------------
 
     def resolve_step1(self) -> str:
         """把 Step1 的三种写法归一成 CRISPOR 要的 seq 字符串。
@@ -160,7 +159,7 @@ class CrisporInput:
         }
 
 
-# ------------------------------------------------------------------ helpers
+# helpers
 
 def _read_fasta(path: str) -> str:
     if not os.path.isfile(path):

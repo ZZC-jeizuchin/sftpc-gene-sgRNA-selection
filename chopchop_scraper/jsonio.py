@@ -88,7 +88,7 @@ def _as_object(source):
         raise ChopchopConfigError(f"输入不是合法 JSON：{exc}") from exc
 
 
-# ------------------------------------------------------------------ 输出
+# 输出
 
 def query_to_json(inp: ChopchopInput, target_pos: int) -> dict:
     gene, fasta = inp.split_target()
