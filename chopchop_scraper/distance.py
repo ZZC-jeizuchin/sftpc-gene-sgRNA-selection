@@ -88,7 +88,7 @@ def build_distance_payload(records, target_pos: int = DEFAULT_TARGET_POS,
     scores = [v["score"] for v in values if v["score"] is not None]
     return {
         "id": "distance_to_22163096",
-        "name": "距离（切点 → chr8:22163096）",
+        "name": "距离（切点 -> chr8:22163096）",
         "source": "chopchop",
         "source_url": "https://chopchop.cbu.uib.no/",
         "source_column": "Genomic location + Strand（切点由本程序计算）",

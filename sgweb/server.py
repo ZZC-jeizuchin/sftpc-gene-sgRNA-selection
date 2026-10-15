@@ -124,14 +124,14 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
                    hard_filter=hard_filter)
 
     if hard_filter:
-        say(f"硬性过滤：{merged.get('filtered_before')} → {len(merged.get('rows', [])) + 0} 条"
+        say(f"硬性过滤：{merged.get('filtered_before')} -> {len(merged.get('rows', [])) + 0} 条"
             f"（刷掉 {merged.get('filtered_count')} 条）")
         if merged.get("filtered_count"):
             names = {r["id"]: r["name"] for r in merged.get("hard_filter_rules", [])}
             detail = "、".join(f"{names.get(k, k)} {v} 条"
                               for k, v in (merged.get("filtered_reasons") or {}).items())
             merged.setdefault("notes", []).append(
-                f"已开启硬性过滤：{merged.get('filtered_before')} 条 → "
+                f"已开启硬性过滤：{merged.get('filtered_before')} 条 -> "
                 f"{merged.get('filtered_before', 0) - merged.get('filtered_count', 0)} 条。"
                 f"被刷掉的原因：{detail}。")
     else:
@@ -159,7 +159,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
     # ---- 定位失败 ----
     if off is None and not merged.get("kurumi"):
         merged.setdefault("warnings", []).append(
-            "这段序列**不在定位窗口内**，拿不到基因组坐标 → 距离项无法计算。"
+            "这段序列**不在定位窗口内**，拿不到基因组坐标 -> 距离项无法计算。"
             "如果这是别的基因，请在左侧「序列基因组起点」填入起始坐标，"
             "或改大「定位窗口」；如果本来就想测 SFTPC，点下面的按钮换成示例序列。"
         )

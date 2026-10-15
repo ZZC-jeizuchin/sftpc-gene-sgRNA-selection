@@ -4,8 +4,8 @@
 
 | 数据 | CRISPOR 列名 | TSV 字段 | 含义 | 方向 |
 |---|---|---|---|---|
-| 数据1 | `Doench '16` | `Doench '16-Score` | on-target 编辑效率（Azimuth 2.0 / Rule Set 2），0–100 | 越大越好 |
-| 数据2 | `CFD Spec. score` | `cfdSpecScore` | off-target 特异性（CFD 聚合，公式 `round(10000/(100+ΣCFD))`），0–100 | 越大越好 |
+| 数据1 | `Doench '16` | `Doench '16-Score` | on-target 编辑效率（Azimuth 2.0 / Rule Set 2），0-100 | 越大越好 |
+| 数据2 | `CFD Spec. score` | `cfdSpecScore` | off-target 特异性（CFD 聚合，公式 `round(10000/(100+sumCFD))`），0-100 | 越大越好 |
 
 ## 1. 有没有查询 API？
 
@@ -18,7 +18,7 @@
 | 取结果 | `GET /crispor.py?batchId=X&download=guides&format=tsv` | **6 KB TSV**，直接含两个数据 |
 | 附加分 | 再加 `&showAllScores=1` | 多出 Chari / Xu / Wang / Doench'14 / CCTop |
 | 脱靶明细 | `GET /crispor.py?batchId=X&download=offtargets&format=tsv` | 每个脱靶位点的 CFD 切割分 |
-| 轻量状态 | `GET /crispor.py?batchId=X&ajaxStatus=1` | ⚠️ 服务器上已坏（HTTP 500），**本项目不用它** |
+| 轻量状态 | `GET /crispor.py?batchId=X&ajaxStatus=1` |  服务器上已坏（HTTP 500），**本项目不用它** |
 
 ## 2. 三个 Step 的输入
 
@@ -30,15 +30,15 @@
 | Step 2 | Select a genome | `--genome` | `hg38`、`hg19`、`mm39` |
 | Step 3 | Select a PAM | `--pam` | `NGG`、`NAG`、`NNGT` |
 
-Step1 三选一：直接给序列（≤2300 bp）、给 FASTA 文件、给染色体区间（服务端自己去取序列）。
+Step1 三选一：直接给序列（<=2300 bp）、给 FASTA 文件、给染色体区间（服务端自己去取序列）。
 
 ## 3. 缓存（重要：这个网站在国内很慢）
 
 三层，越靠前越省：
 
-1. **语义缓存命中**：`.crispor_cache/index.json` 里已有该输入指纹的 TSV →
+1. **语义缓存命中**：`.crispor_cache/index.json` 里已有该输入指纹的 TSV ->
    直接读本地，**0 次网络请求**（实测 0.1 秒，对比联网 4 秒、首次查询 30~60 秒）。
-2. **batchId 复用**：有指纹但没 TSV → 跳过"提交"（最慢的一步），直接去取结果。
+2. **batchId 复用**：有指纹但没 TSV -> 跳过"提交"（最慢的一步），直接去取结果。
 3. **原始响应缓存**：`.crispor_cache/raw/` 按 URL+参数 的 sha1 存；同一 URL 第二次访问直接读盘。
 
 请求指纹 = `sha1(step1解析结果 | genome | pam | all_scores)`，**不含 `--name`**，所以换个名字不会重新请求。
@@ -187,10 +187,10 @@ JSON 输出会自动多出一个块，`--data` 也会自动认这个新 id。
 ## 7. 已知边界
 
 - 输入序列必须是基因组序列，**不能是 cDNA**；跨外显子边界的 guide 没有真实靶点。
-- 序列 ≤ 2300 bp（只放一个外显子/目标区域），序列两端 50 bp 内的 guide 算不出 Doench '16（显示 `--`）。
+- 序列 <= 2300 bp（只放一个外显子/目标区域），序列两端 50 bp 内的 guide 算不出 Doench '16（显示 `--`）。
 - 落在重复序列里的 guide，CRISPOR 会把 MIT / CFD 都置 0（不是抓取错误）。
 - `Doench '16` 在 CRISPOR 里是 `pam_audit=False`，非 NGG 的 guide 也给分，但模型没在那些 PAM 上验证过。
-- 全基因组脱靶只搜到 4 个错配；NGG guide 还会把 NAG/NGA PAM 的位点计入 ΣCFD。
+- 全基因组脱靶只搜到 4 个错配；NGG guide 还会把 NAG/NGA PAM 的位点计入 sumCFD。
 
 ---
 
