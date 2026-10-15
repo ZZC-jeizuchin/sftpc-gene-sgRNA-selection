@@ -1,33 +1,14 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""两个爬虫共用的基因组/坐标工具。
+"""两个爬虫共用的坐标 / 定位工具。
 
-为什么要共用：
-    CRISPOR 和 CHOPCHOP 的 "位置" 列用的是**同一个约定** ——
-    23 bp 靶位点（20nt spacer + PAM）在正链上的最左端 1-based 坐标。
-    所以切点公式、距离分档、序列定位这三件事必须两边完全一致，
-    不能各写一份（否则又会像之前那样差 11 bp）。
+两个网站的"位置"列锚点不同，切点公式和序列定位必须共用一份，不能各写一份。
 
-提供：
-    locate_sequence()   裸碱基序列 -> 基因组 offset（本地匹配，不依赖 BLAT）
-    cut_site()          位置 + 链 -> 切割位点（正链坐标）
-    distance_to()       |切点 - 目标位点|
-    distance_band_score() / band_name()   文档规定的区间给分
+    locate_sequence()      裸碱基序列 -> 基因组 offset（本地匹配，不走 BLAT）
+    cut_site()             位置 + 链 -> 切割位点
+    distance_to()          |切点 - 目标位点|
+    distance_band_score()  按区间给分
 """
 
 from __future__ import annotations
@@ -52,27 +33,9 @@ DISTANCE_BANDS: list[tuple[float, float]] = [
     (float("inf"), 0.1),
 ]
 
-#  两个网站的"位置"列锚点**不同**，这是最容易错的地方：
-#   CHOPCHOP  Genomic location = 23mer 在正链上的最左端（anchor="23mer"）
-#   CRISPOR   Position/Strand  = **PAM 区间**在正链上的左端（anchor="pam"）
-#   fw / + 链上两者相差 20 bp。
-#
-# SpCas9 切在 PAM 5' 侧 3 bp（protospacer 第 17/18 位之间）。
-#
-#  切点坐标取整数还是半点，**纯粹是坐标约定**，描述的是同一个物理位置：
-#
-#   "half"（默认）——把每个碱基当成一个**点**，坐标就是它的编号。
-#        那么切点落在两个碱基坐标的正中间 -> 必然是 x.5
-#        正链: 切点 = p - 3.5       反链: 切点 = p + 5.5
-#        好处: "切点离目标碱基 0.5" 能表达出"紧贴目标碱基边缘"这个极限
-#
-#   "int"  ——把每个碱基当成一个**区间**，坐标标的是区间的边界。
-#        那么"起点"和"切点"都是边界 -> 相减必然是整数
-#        正链: 切点 = p - 3.0       反链: 切点 = p + 6.0
-#        好处: 距离就是"隔了几个 bp"，是整数，更符合直觉
-#
-# 两种约定算出的物理切点是同一个，实测 434 条 guide **分档结果完全一样**。
-# 换约定只需要改这一个常量。
+# 两个网站报的位置锚点不一样，正链差 20 bp（反链正好重合）：
+#   CHOPCHOP 报 23mer 最左端，CRISPOR 报 PAM 区间左端
+# SpCas9 切在 PAM 5' 侧 3 bp。用 int 约定（碱基当区间），距离是整数。
 CUT_CONVENTION = "int"           # "half" 或 "int"（负责人 2026-10-06 定：用 int）
 
 CUT_FROM_PAM_BY_CONVENTION = {

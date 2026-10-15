@@ -1,43 +1,7 @@
 # 本项目由华南师范大学附属中学知识城校区高二一班同学制作
-# Made by students of Class 1, Grade 11, The Affiliated High School of SCNU (Knowledge City Campus)
 # Copyright (C) 2026 华南师范大学附属中学知识城校区高二一班
 # SPDX-License-Identifier: AGPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""CHOPCHOP 的 JSON 输入 / 输出。
-
-输入（一次查询）：
-{
-  "target": "SFTPC",              // 或 "chr8:22157000-22165000"，或改用 "sequence": "ACGT..."
-  "genome": "hg38",
-  "nuclease": "CRISPR",
-  "application": "knockout",
-  "target_region": "WHOLE",
-  "sequence_name": "sftpc",
-  "target_pos": 22163096,          // 第三个数据的目标位点，缺省 22163096
-  "job_id": "a37d4ff6-...",        // 可选，跳过提交
-  "options": {"scoring": "DOENCH_2016", "gc_min": 10, "gc_max": 90,
-              "cache": true, "timeout": 600, "poll_interval": 3}
-}
-
-输出（第三个数据独立成块）：
-{
-  "ok": true,
-  "query":   {...},
-  "chopchop": {"job_id": ..., "url": ..., "n_guides": 161, "run_info": {...}},
-  "datasets": {"distance_to_22163096": {...}}
-}
+"""CHOPCHOP 的 JSON 输入 / 输出。字段见 query.example.json / output.example.json。
 """
 
 from __future__ import annotations
