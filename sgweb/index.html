@@ -196,7 +196,7 @@
 <div class="infopop" id="filterPop"></div>
 <header>
   <h1>sgRNA 设计</h1>
-  <span class="sub">CRISPOR + CHOPCHOP · 三数据加权排序</span>
+  <span class="sub" id="subtitle">CRISPOR + CHOPCHOP · 四维加权排序</span>
   <span class="spacer"></span>
   <span class="pill" id="pill">就绪</span>
 </header>
@@ -475,6 +475,8 @@ function render(d){
   const w = d.weights;
   // ---- v2 四维模型（等位基因特异性 / 效率 / 脱靶 / 距离），每维 0-100 ----
   const v2 = d.model === 'v2';
+  const subEl = $('subtitle');
+  if (subEl) subEl.textContent = 'CRISPOR + CHOPCHOP · ' + (v2 ? '四维加权排序' : '三数据加权排序');
   const wv2 = d.weights_v2 || { allele: 35, doench16: 30, cfd_spec: 25, distance: 10 };
   const tot = r => (v2 ? Number(r.final_v2 ?? 0) : Number(r.final_score ?? 0) * 100);
   const totTxt = r => (v2 ? fmt(r.final_v2, 2) : pts(r.final_score));
