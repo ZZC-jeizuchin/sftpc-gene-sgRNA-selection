@@ -38,7 +38,9 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
                  genome_chrom: str | None = None,
                  third_mode: str = "auto",
                  locate_window: tuple[str, int, int] | None = None,
-                 hard_filter: bool = False) -> dict:
+                 hard_filter: bool = False,
+                 allele: bool = False,
+                 preset: str = "allele_first") -> dict:
     """跑两个爬虫 + 合并加权。任一网站失败都能降级出结果。"""
     def say(msg):
         if log:
@@ -106,8 +108,81 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         return {"ok": False, "error": "两个网站都失败了，无法计算。",
                 "warnings": result["warnings"], "steps": result["steps"]}
 
+    # 网站1b（可选）：把只改了一个碱基的突变型序列再跑一次，用来算 ΔScore
+    delta_index = None
+    allele_meta = None
+    if allele and crispor_payload is not None:
+        try:
+            from sgweb import allele_specific as AS
+            off = genome_offset
+            if off is None:
+                off = crispor_payload.get("genome_offset")
+            chrom = genome_chrom or crispor_payload.get("genome_chrom") or "chr8"
+            if off is None:
+                raise RuntimeError("拿不到序列的基因组起点，无法定位突变位点")
+            idx = AS.mutation_index(sequence, off, target_pos)
+            if not AS.check_ref(sequence, idx):
+                raise RuntimeError(
+                    f"参考碱基不符：第 {idx} 位是 {sequence[idx]}，"
+                    f"突变记录要求 {AS.MUTATION['ref']}")
+            mut_seq = AS.build_mutant(sequence, idx)
+
+            say("网站1b CRISPOR(突变型)：提交中…")
+            from crispor_scraper import CrisporInput, fetch as crispor_fetch
+            inp_mut = CrisporInput(
+                sequence=mut_seq, genome=genome, pam=pam, name="web_mut",
+                target_pos=target_pos, poll_interval=3.0, timeout=600.0,
+                genome_offset=off, genome_chrom=chrom, auto_locate=False,
+            )
+            r_mut = crispor_fetch(inp_mut)
+            delta_index = AS.build_delta_index(
+                crispor_payload["values"], r_mut.distance_payload()["values"])
+            n_cov = sum(1 for v in delta_index.values() if (v.get("delta") or 0) != 0)
+            allele_meta = {
+                "mutation": AS.MUTATION,
+                "mutant_offset": idx,
+                "n_crispor_mutant": len(r_mut.records),
+                "n_delta_nonzero": n_cov,
+                "batch_id": r_mut.batch_id,
+            }
+            result["steps"].append({
+                "site": "crispor_mut", "ok": True, "batch_id": r_mut.batch_id,
+                "url": r_mut.url, "n_guides": len(r_mut.records),
+                "from_cache": r_mut.from_cache,
+            })
+            say(f"网站1b 完成：{len(r_mut.records)} 条 guide，"
+                f"ΔScore ≠ 0 的 {n_cov} 条")
+        except Exception as exc:
+            result["warnings"].append(f"等位基因特异性评分失败（已降级为三维修）：{exc}")
+            result["steps"].append({"site": "crispor_mut", "ok": False, "error": str(exc)})
+            say(f"网站1b 失败：{exc}")
+            delta_index = None
+
     merged = merge(crispor_payload, chopchop_payload, target_pos, third_mode=third_mode,
                    hard_filter=hard_filter)
+
+    # v2：四维 0-100 加权（等位基因特异性 + 效率 + 脱靶 + 距离）
+    if allele:
+        try:
+            from sgweb.aggregate import WEIGHT_PRESETS, DEFAULT_PRESET, rescore_v2
+            preset_key = preset if preset in WEIGHT_PRESETS else DEFAULT_PRESET
+            preset_weights = WEIGHT_PRESETS[preset_key]["weights"]
+            off2 = genome_offset or merged.get("genome_offset") \
+                or (crispor_payload or {}).get("genome_offset")
+            rescore_v2(merged, delta_index, target_pos=target_pos,
+                       genome_offset=off2, hard_filter=hard_filter,
+                       weights=preset_weights)
+            # 前端按 v2 顺序展示；row 对象已被原地标注，v1 字段仍然在
+            merged["rows"] = merged["rows_v2"]
+            merged["model"] = "v2"
+            merged["preset"] = preset_key
+            merged["allele_meta"] = allele_meta
+            say(f"v2 四维评分完成：{merged.get('count_v2')} 条，"
+                f"覆盖突变 {merged.get('allele_covered_count')} 条，"
+                f"预设 {preset_key}")
+        except Exception as exc:
+            merged.setdefault("warnings", []).append(f"v2 评分失败：{exc}")
+            say(f"v2 评分失败：{exc}")
 
     if hard_filter:
         say(f"硬性过滤：{merged.get('filtered_before')} -> {len(merged.get('rows', [])) + 0} 条"
@@ -276,6 +351,10 @@ class Handler(BaseHTTPRequestHandler):
 
         hard_filter = str(params.get("hard_filter") or "").strip().lower() in ("1","true","yes","on")
 
+        # v2 第四维：等位基因特异性（默认开启；关掉就退回原来的三维修）
+        allele = str(params.get("allele", "1")).strip().lower() in ("1", "true", "yes", "on")
+        preset = str(params.get("preset") or "allele_first").strip()
+
         third_mode = (params.get("third_mode") or "auto").strip()
         if third_mode not in ("auto", "average", "computed"):
             self._json(400, {"ok": False, "error": "third_mode 必须是 auto / average / computed"})
@@ -287,7 +366,9 @@ class Handler(BaseHTTPRequestHandler):
                                genome_chrom=(params.get("genome_chrom") or None),
                                third_mode=third_mode,
                                locate_window=loc_win,
-                               hard_filter=hard_filter)
+                               hard_filter=hard_filter,
+                               allele=allele,
+                               preset=preset)
         except Exception:
             self._json(500, {"ok": False, "error": "内部错误：\n" + traceback.format_exc()})
             return

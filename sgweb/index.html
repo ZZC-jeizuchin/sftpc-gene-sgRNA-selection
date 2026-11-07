@@ -294,6 +294,29 @@
       </div>
 
       <div class="field">
+        <label style="display:flex;align-items:center;gap:6px">
+          <span>等位基因特异性评分（v2 第四维）</span>
+        </label>
+        <label class="switchrow">
+          <input type="checkbox" id="allele" checked>
+          <span class="switch"><i></i></span>
+          <span class="switchtext" id="alleleText">开启</span>
+        </label>
+        <div class="hint">开启后，工具会把「只改了一个碱基的突变型序列」再提交一次 CRISPOR，
+          比较两条序列的切割效率差（ΔScore），算出「能不能只切突变型」。
+          首次约多等 1–2 分钟，之后走缓存。</div>
+      </div>
+
+      <div class="field" id="presetField">
+        <label for="preset">权重预设</label>
+        <select id="preset">
+          <option value="allele_first">等位基因特异性优先（35 / 30 / 25 / 10）</option>
+          <option value="balanced">均衡 · CRITIC 参考（15 / 39 / 33 / 13）</option>
+        </select>
+        <div class="hint">两套权重都保留，可以现场切换对比排序变化 —— 这本身就是答辩材料。</div>
+      </div>
+
+      <div class="field">
         <label for="topn">推荐候选条数</label>
         <input type="number" id="topn" value="5" min="1" max="50">
         <div class="hint">分数最高的前 N 条会单独列出并高亮</div>
@@ -301,11 +324,18 @@
 
       <div class="field">
         <label>权重比</label>
-        <div class="weights">
+        <div class="weights" id="weightsV2">
+          <div><b>35</b><span>等位基因特异性</span></div>
+          <div><b>30</b><span>Doench '16</span></div>
+          <div><b>25</b><span>CFD Spec</span></div>
+          <div><b>10</b><span>突变距离</span></div>
+        </div>
+        <div class="weights" id="weightsV1" style="display:none">
           <div><b>7</b><span>Doench '16</span></div>
           <div><b>6</b><span>CFD Spec</span></div>
           <div><b>4</b><span>突变距离评分</span></div>
         </div>
+        <div class="hint" id="weightsHint">四维各自 0–100 分，加权求和仍是满分 100。</div>
       </div>
 
       <button id="run">开始分析</button>
@@ -398,6 +428,8 @@ async function analyze(){
         locate_window: ($('locwin').value.trim() || null),
         third_mode: $('thirdmode').value,
         hard_filter: $('hardfilter').checked,
+        allele: $('allele').checked,
+        preset: $('preset') ? $('preset').value : 'allele_first',
         top_n: Math.max(1, Math.min(50, parseInt($('topn').value, 10) || 5)),
       })
     });
@@ -441,15 +473,34 @@ function render(d){
   const N = Math.max(1, Math.min(50, raw));
   const top = rows[0];
   const w = d.weights;
+  // ---- v2 四维模型（等位基因特异性 / 效率 / 脱靶 / 距离），每维 0-100 ----
+  const v2 = d.model === 'v2';
+  const wv2 = d.weights_v2 || { allele: 35, doench16: 30, cfd_spec: 25, distance: 10 };
+  const tot = r => (v2 ? Number(r.final_v2 ?? 0) : Number(r.final_score ?? 0) * 100);
+  const totTxt = r => (v2 ? fmt(r.final_v2, 2) : pts(r.final_score));
+  // v2 用 rank_v2；否则用 v1 的 rank
+  const rk = r => (v2 ? (r.rank_v2 ?? r.rank) : r.rank);
+  // 等级按分位给（不是绝对分数线）：本工具的分数结构上就到不了 90，
+  // 用固定阈值会让整张表全是「不推荐」，失去信息。
+  const gradeTag = g => {
+    if (!g) return '';
+    const c = { '优先推荐': '#0d8a5f', '推荐': '#2563a8', '可选': '#7c5cff',
+                '备选': '#9aa3af' }[g] || '#9aa3af';
+    return `<span class="tag" style="border-color:${c}55;color:${c};background:${c}12">${esc(g)}</span>`;
+  };
+  const pctTxt = r => (r.percentile === null || r.percentile === undefined)
+      ? '' : `前 ${Number(r.percentile).toFixed(1)}%`;
   const picks = rows.slice(0, N);
 
   const stats = `
     <div class="stats">
       <div><b>${d.count}</b>候选 guide</div>
       <div><b>${d.sequence_length} bp</b>输入长度</div>
-      <div><b>${pts(top?.final_score)}</b>最高分</div>
+      <div><b>${v2 ? fmt(top?.final_v2, 2) : pts(top?.final_score)}</b>最高分</div>
       <div><b>${rows.filter(r => r.distance !== null && r.distance < 20).length}</b>距目标 &lt;20 bp</div>
-      <div><b>${d.distance_available ? '3 / 3' : '2 / 3'}</b>可用数据</div>
+      ${v2 ? `<div title="23mer 覆盖突变位点的 guide：只有这些才可能区分突变型与野生型">
+          <b>${d.allele_covered_count ?? '—'}</b>覆盖突变</div>` : ''}
+      <div><b>${v2 ? '4 / 4' : (d.distance_available ? '3 / 3' : '2 / 3')}</b>可用数据</div>
       <div title="【两站都有】CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA（= 负责人说的第一部分）">
         <b>${(d.parts && d.parts.part1) ?? '—'}</b>两站都有</div>
       <div title="【仅 CRISPOR】只有 CRISPOR 给出了这条 sgRNA，CHOPCHOP 没有给出（= 负责人说的第二部分）">
@@ -457,21 +508,42 @@ function render(d){
       <div title="【仅 CHOPCHOP】只有 CHOPCHOP 有、CRISPOR 没有，按负责人规则直接丢弃（= 负责人说的第三部分）">
         <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>仅 CHOPCHOP(丢弃)</div>
       <div style="margin-left:auto;text-align:right">
-        ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site} 原始结果 ↗</a>`).join('<br>')}
+        ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site === 'crispor_mut' ? 'CRISPOR(突变型)' : s.site} 原始结果 ↗</a>`).join('<br>')}
+        <div style="margin-top:6px"><button class="ghost" id="exportCsv" style="width:auto;padding:5px 12px;font-size:12px">导出 CSV</button></div>
       </div>
     </div>`;
+
+  const methodPanel = v2 ? `
+    <details class="methodpanel" style="margin:0 16px 10px;padding:10px 14px;background:#f8fafc;border:1px solid var(--line2);border-radius:8px;font-size:12.5px;line-height:1.8;color:#4a5563">
+      <summary style="cursor:pointer;font-weight:600;color:var(--ink)">这个分数是怎么算出来的？（点开看方法）</summary>
+      <div style="margin-top:8px">
+        <b>综合分</b> = ${fmt(wv2.allele,0)}%×等位基因特异性 + ${fmt(wv2.doench16,0)}%×切割效率
+        + ${fmt(wv2.cfd_spec,0)}%×脱靶特异性 + ${fmt(wv2.distance,0)}%×突变距离，四个维度各自 0–100 分。<br>
+        <b>等位基因特异性</b> = 0.6 × ΔScore + 0.4 × 位置分。<br>
+        <b>ΔScore</b>：把「原序列」和「只改了一个碱基的突变型序列」分别提交给 CRISPOR，
+        取两次 Doench '16 之差，再按「20 分 = 满分」归一化到 0–100。
+        （Doench 是 0–100 整数分，单个碱基只动几个点，不归一化会让这一维整体归零。）<br>
+        <b>位置分</b>：突变落在 PAM 区 100 / Seed 区（距 PAM 1–8）80 / 中间区 40 / PAM 远端 10；
+        23mer 盖不到突变位点记 0 —— 因为不覆盖就物理上无法区分两条等位基因。<br>
+        <b>降权</b>：ΔScore &lt; 20（两条切得差不多）时整体 ×0.3，避免「离得近但两条都切」的候选排在前面。<br>
+        <b>等级</b>不是绝对分数线，而是<b>分位</b>（在这批候选里排前百分之几）——
+        本工具的综合分结构上就到不了 90 分（大多数 guide 的等位基因特异性是 0），
+        用固定阈值会让整张表全是「不推荐」。
+      </div>
+    </details>` : '';
 
   const warn = (d.warnings && d.warnings.length)
     ? `<div class="warnbar">⚠ ${d.warnings.map(w => esc(w).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')).join('<br>⚠ ')}</div>` : '';
 
   // 推荐候选
   const pickCards = picks.map(r => `
-    <div class="pick ${r.rank === 1 ? 'first' : ''}">
-      <span class="rk">${r.rank === 1 ? '最佳' : 'No.' + r.rank}</span>
+    <div class="pick ${rk(r) === 1 ? 'first' : ''}">
+      <span class="rk">${rk(r) === 1 ? '最佳' : 'No.' + rk(r)}</span>
       <div class="sq">${colorSeq(r.sequence || '')}</div>
-      <div class="tot">${pts(r.final_score)}<small>/ 100</small></div>
-      <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div>
+      <div class="tot">${totTxt(r)}<small>/ 100</small></div>
+      <div class="bar"><i style="width:${Math.max(0, Math.min(100, tot(r)))}%"></i></div>
       <div class="meta">
+        ${v2 ? `<span title="等位基因特异性评分：0.6×ΔScore + 0.4×位置分">等位 ${fmt(r.allele_score, 1)}</span>` : ''}
         <span>D16 ${fmt(r.doench16, 0)}</span>
         <span>CFD ${fmt(r.cfd_spec, 0)}</span>
         <span>突变距离 ${r.distance === null ? '—' : Number(r.distance).toFixed(1) + 'bp'}</span>
@@ -503,13 +575,14 @@ function render(d){
     </div>`;
 
   const body = rows.map(r => {
-    const isTop = r.rank <= N;
-    const best = r.rank === 1;
+    const r_ = rk(r);
+    const isTop = r_ != null && r_ <= N;
+    const best = r_ === 1;
     const parts = [
-      `<td class="rank">${best ? '<b>1</b>' : r.rank}</td>`,
+      `<td class="rank">${best ? '<b>1</b>' : r_}</td>`,
       `<td>${colorSeq(r.sequence || '')} ${
         best ? '<span class="badge">最佳</span>'
-             : (isTop ? `<span class="badge" style="background:#e8f7f1;color:#0d8a5f;border:1px solid #bfe7d7">Top ${r.rank}</span>` : '')
+             : (isTop ? `<span class="badge" style="background:#e8f7f1;color:#0d8a5f;border:1px solid #bfe7d7">Top ${r_}</span>` : '')
       }</td>`,
       `<td class="num">${r.strand === 'fw' || r.strand === '+' ? '+' : '-'}</td>`,
       `<td class="num">${r.guide_start != null
@@ -531,10 +604,23 @@ function render(d){
           ? '<span class="yesno yes">是</span>'
           : '<span class="yesno no">否</span>'}${r.gc_content != null
           ? `<div class="muted" style="font-size:10.5px">GC ${r.gc_content.toFixed(0)}%</div>` : ''}</td>`,
-      `<td class="num scorecell"><span class="v">${pts(r.final_score)}</span>
-         ${r.weight_used && r.weight_used !== d.total_weight
-            ? `<div class="muted" style="font-size:10.5px">权重比 ${r.weight_used}/${d.total_weight}</div>` : ''}
-         <div class="bar"><i style="width:${Math.max(0, Math.min(1, r.final_score)) * 100}%"></i></div></td>`,
+      // v2：双序列 ΔScore / 突变所在功能区 / 等位基因特异性
+      ...(v2 ? [
+        `<td class="num">${r.allele_delta === null || r.allele_delta === undefined
+            ? '<span class="muted">—</span>'
+            : `${fmt(r.allele_delta, 1)}<div class="muted" style="font-size:10.5px">→${fmt(r.allele_delta_100, 0)}</div>`}</td>`,
+        `<td class="num">${r.allele_region_label
+            ? `${esc(r.allele_region_label)}<div class="muted" style="font-size:10.5px">${
+                r.allele_pos_from_pam != null ? '距PAM ' + r.allele_pos_from_pam : '—'}</div>`
+            : '<span class="muted">—</span>'}</td>`,
+        `<td class="num">${fmt(r.allele_score, 1)}
+           ${r.allele_downgraded ? '<div class="muted" style="font-size:10.5px">ΔScore&lt;20 已降权</div>' : ''}</td>`,
+      ] : []),
+      `<td class="num scorecell"><span class="v">${totTxt(r)}</span>
+         ${v2 ? `<div class="muted" style="font-size:10.5px">${gradeTag(r.tier || r.grade)} ${pctTxt(r)}</div>`
+              : (r.weight_used && r.weight_used !== d.total_weight
+                  ? `<div class="muted" style="font-size:10.5px">权重比 ${r.weight_used}/${d.total_weight}</div>` : '')}
+         <div class="bar"><i style="width:${Math.max(0, Math.min(100, tot(r)))}%"></i></div></td>`,
       // sgRNA 来源（这条 guide 是哪个网站给的）
       `<td>${
           r.part === 1
@@ -566,7 +652,7 @@ function render(d){
   const notesBar = (d.notes && d.notes.length)
     ? `<div class="note" style="padding:9px 16px;font-size:12.5px;color:#5b6472;background:#f8fafc;border-bottom:1px solid var(--line2);line-height:1.7">
          ${d.notes.map(esc).join('<br>')}</div>` : '';
-  $('result').innerHTML = stats + kurumiBar + warn + notesBar + warnBtn + pickBox + `
+  $('result').innerHTML = stats + methodPanel + kurumiBar + warn + notesBar + warnBtn + pickBox + `
     <div style="overflow:auto; max-height:calc(100vh - 250px)">
       <table>
         <thead><tr>
@@ -577,7 +663,14 @@ function render(d){
           <th class="num" title="切割位点到目标位点的碱基距离">突变距离<br><span style="font-weight:400;text-transform:none">切点->目标</span></th>
           <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">x${w.distance} 分档+/-覆盖</span></th>
           <th class="num" title="这条 sgRNA 的 20nt 区间有没有盖住突变位点 chr8:22163096（负责人《评分规则》要求输出的是/否）">覆盖突变位点</th>
-          <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">/${d.total_weight}（满分 100）</span></th>
+          ${v2 ? `<th class="num" title="双序列切割效率差：Doench'16(突变型) − Doench'16(野生型)。第二行是归一化到 0-100 的 ΔScore">
+                    ΔScore<br><span style="font-weight:400;text-transform:none">突变型−野生型</span></th>
+                  <th class="num" title="突变位点落在 23mer 的哪个功能区：PAM 区 / Seed 区 / 中间区 / PAM 远端 / 不覆盖">
+                    突变位置<br><span style="font-weight:400;text-transform:none">功能区</span></th>
+                  <th class="num" title="等位基因特异性 = 0.6×ΔScore + 0.4×位置分；ΔScore&lt;20 时整体 ×0.3">
+                    等位基因特异性<br><span style="font-weight:400;text-transform:none">x${wv2.allele}</span></th>` : ''}
+          <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">${
+              v2 ? `v2 四维/100` : `/${d.total_weight}（满分 100）`}</span></th>
           <th title="这条 sgRNA 是哪些网站给出的：两站都有 = CRISPOR 和 CHOPCHOP 都给出了；仅 CRISPOR = CHOPCHOP 没给出">sgRNA 来源</th>
           <th title="突变距离评分是怎么来的：实算 = 用这条 sgRNA 自己的切点算的；平均值顶替 = 借用了「两站都有」那批的平均值">突变距离评分来源</th>
         </tr></thead>
@@ -588,11 +681,44 @@ function render(d){
   document.querySelector('#result > div[style*="overflow"]')?.scrollTo(0,0);
   const inline = $('topnInline');
   bindWarnActions();
+  bindExportCsv(d);
   if (inline) inline.addEventListener('change', () => {
     $('topn').value = inline.value;
     render(d);
   });
   $('pill').textContent = '完成';
+}
+
+/* 导出当前排序为 CSV（纯前端，不经过服务器） */
+function bindExportCsv(d){
+  const b = document.getElementById('exportCsv');
+  if (!b) return;
+  b.addEventListener('click', () => {
+    const rows = d.rows || [];
+    const v2 = d.model === 'v2';
+    const rk = r => (v2 ? (r.rank_v2 ?? r.rank) : r.rank);
+    const head = ['排名','sgRNA(20nt+PAM)','链','切点(基因组)','距突变bp','覆盖突变',
+                  '突变位置','DoenchWT','DoenchMut','Δraw','ΔScore',
+                  '等位基因特异性','切割效率','脱靶特异性','突变距离分',
+                  '综合分','分位(%)','等级'];
+    const cell = x => (x === null || x === undefined ? '' : String(x).replace(/[,"\n]/g, ' '));
+    const lines = [head.join(',')];
+    for (const r of rows) {
+      lines.push([rk(r), r.sequence, r.strand, r.cut_site, r.distance,
+        r.allele_covered ? '是' : '否', r.allele_region_label,
+        r.eff_score, r.eff_score_mutant, r.allele_delta, r.allele_delta_100,
+        r.allele_score, r.eff_score, r.cfd_score, r.dist_score,
+        v2 ? r.final_v2 : (r.final_score === null || r.final_score === undefined ? '' : (r.final_score*100).toFixed(2)),
+        r.percentile, r.tier || r.grade].map(cell).join(','));
+    }
+    const blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sgRNA_ranking.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  });
 }
 
 /* 示例序列（hg38 chr8:22162801-22163400，含 c.218） */
@@ -675,6 +801,23 @@ function hidePop(){ $('filterInfo').classList.remove('on'); $('filterPop').class
 })();
 
 $('run').addEventListener('click', analyze);
+
+/* v2 开关：文案 + 权重比展示 */
+(function bindAlleleUI(){
+  const cb = $('allele');
+  if (!cb) return;
+  const sync = () => {
+    $('alleleText').textContent = cb.checked ? '开启' : '关闭';
+    $('weightsV2').style.display = cb.checked ? '' : 'none';
+    $('weightsV1').style.display = cb.checked ? 'none' : '';
+    const pf = $('presetField');
+    if (pf) pf.style.display = cb.checked ? '' : 'none';
+    $('weightsHint').textContent = cb.checked
+      ? '四维各自 0–100 分，加权求和仍是满分 100。'
+      : '三维修：0–1 加权后 ×100。';
+  };
+  cb.addEventListener('change', sync); sync();
+})();
 
 /* 打开 #last 可直接看上次结果（刷新页面不丢） */
 if (location.hash === '#last'){

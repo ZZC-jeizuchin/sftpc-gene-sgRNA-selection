@@ -9,20 +9,22 @@ __pycache__/
 .venv/
 venv/
 
-# 抓取缓存（体积会涨；不想要就删，下次会重新抓）
+# 抓取缓存（体积会涨；删掉下次会重新抓）
 .crispor_cache/
 .chopchop_cache/
 .genome_cache/
 
-# AI 代理工作区内部状态（不属于项目）
-.dshwolf/
-
-# 输出
+# 生成物：output/ 每次跑都会重写，不提交
+# 数据快照 data/ 是提交的，保证离线可复现
+output/
 crispor_out/
 chopchop_out/
 *.log
 
-# 含他人真实姓名/私人对话，仅保留在本地，不进公开仓库
+# AI 代理工作区内部状态（不属于项目）
+.dshwolf/
+
+# 含他人真实姓名/私人对话，仅保留在本地
 聊天记录3.txt
 负责人指示.md
 

@@ -1,0 +1,12 @@
+{
+  "name": "HBB",
+  "genome": "hg38",
+  "chrom": "chr11",
+  "start": 5226300,
+  "end": 5227500,
+  "target": 5227002,
+  "ref": "T",
+  "alt": "A",
+  "pam": "NGG",
+  "offset_in_seq": 701
+}

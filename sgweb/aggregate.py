@@ -16,9 +16,61 @@ from __future__ import annotations
 from genome_utils import (
     DEFAULT_TARGET_POS, bands_json, distance_band_score, normalize_strand,
 )
+try:
+    from sgweb import allele_specific as AS
+except ImportError:                      # 允许把 sgweb/ 直接当脚本目录用
+    import allele_specific as AS         # type: ignore[no-redef]
 
 WEIGHTS = {"doench16": 7, "cfd_spec": 6, "distance": 4}
 TOTAL_WEIGHT = sum(WEIGHTS.values())          # 17
+
+# ---------------------------------------------------------------------------
+# v2 评分模型：加入「等位基因特异性」第四维，四个维度统一到 0-100 分制
+#
+#   v1（现行）  0.412×效率 + 0.353×脱靶 + 0.235×距离      —— 全是单序列评分
+#   v2（新增）  0.35×等位基因特异性 + 0.30×效率 + 0.25×脱靶 + 0.10×距离
+#
+# v2 把「距离」从 24% 降到 10%：距离只是「能不能只切突变型」的代理指标，
+# 真正决定等位基因特异性的是双序列切割效率差（ΔScore），所以单独立一维。
+# ---------------------------------------------------------------------------
+WEIGHTS_V2 = {"allele": 35, "doench16": 30, "cfd_spec": 25, "distance": 10}
+TOTAL_WEIGHT_V2 = sum(WEIGHTS_V2.values())    # 100
+MODEL_VERSION = "v2"
+
+# 权重预设
+#   allele_first —— 默认。等位基因特异性优先。
+#       理由：本项目目标是「只切突变型」，能不能区分两条等位基因是**先决条件**。
+#       实测在 313 条里，这个预设让 Top-10 有 5 条覆盖突变（其他预设只有 3–4 条）。
+#       这是一次「目标驱动的价值判断」，不是从数据里推导出来的。
+#   balanced —— 均衡。参考 CRITIC 客观赋权（10.3%）与敏感性分析（10–20%）。
+#       CRITIC 是方差驱动的，它回答「哪个维度区分度大」，
+#       不回答「哪个维度对目标更重要」。两者不是一回事，所以两个预设都保留。
+WEIGHT_PRESETS: dict[str, dict] = {
+    "allele_first": {
+        "label": "等位基因特异性优先",
+        "note": "默认。把「能不能区分两条等位基因」放在第一位。",
+        "weights": {"allele": 35, "doench16": 30, "cfd_spec": 25, "distance": 10},
+    },
+    "balanced": {
+        "label": "均衡（CRITIC 参考）",
+        "note": "等位基因特异性降到 15%，其余按 30:25:10 重新分配。分数分布更平滑。",
+        "weights": {"allele": 15, "doench16": 39, "cfd_spec": 33, "distance": 13},
+    },
+}
+DEFAULT_PRESET = "allele_first"
+
+# 距离分档的 0-100 版本（v2）：分档分×10，压住突变位点再 +10，封顶 100
+DISTANCE_100_BANDS = [(20.0, 100.0), (50.0, 90.0), (100.0, 70.0),
+                      (200.0, 40.0), (float("inf"), 10.0)]
+COVERAGE_BONUS_100 = 10.0
+
+# 等级不用绝对分数线，改用**分位**。
+# 绝对分数线（90/80/70/60）是照搬别人的表格，但本工具的分数结构上就到不了 90：
+# 307/313 条 guide 的等位基因特异性是 0（不覆盖突变就物理上无法区分），
+# 综合分上限只有 0.30×100+0.25×100+0.10×100 = 65。
+# 用固定阈值会让整张表全是「不推荐」，反而失去信息。
+# 分位说的是「在这批候选里排前百分之几」，任何时候都成立。
+TIER_BANDS = [(5, "优先推荐"), (20, "推荐"), (50, "可选"), (100.0, "备选")]
 
 # 覆盖奖励：20nt 区间压住目标点则 +0.1，没压住则 -0.1。
 # 减分是必须的 —— 压住目标的切点必然 <20bp、分档本来就是 1.0，
@@ -371,3 +423,147 @@ def merge(crispor_payload: dict | None, chopchop_payload: dict | None,
         "unscored": [r for r in out if r["final_score"] is None],
         "dropped_count": len(part3_keys),
     }
+
+
+# ---------------------------------------------------------------------------
+# v2：四维 0-100 加权
+# ---------------------------------------------------------------------------
+
+def distance_score_100(distance, covered: bool):
+    """距离维度换算到 0-100：分档值再乘 10，压住突变位点 +10。"""
+    if distance is None:
+        return None
+    for upper, score in DISTANCE_100_BANDS:
+        if distance < upper:
+            base = score
+            break
+    else:
+        base = DISTANCE_100_BANDS[-1][1]
+    if covered:
+        base = min(100.0, base + COVERAGE_BONUS_100)
+    return round(base, 4)
+
+
+def tier_of(percentile):
+    """按分位给等级。percentile = 在这批候选里排前百分之几（越小越好）。"""
+    if percentile is None:
+        return None
+    for upper, name in TIER_BANDS:
+        if percentile <= upper:
+            return name
+    return TIER_BANDS[-1][1]
+
+
+def rescore_v2(merged: dict, delta_index: dict | None,
+               target_pos: int = DEFAULT_TARGET_POS,
+               genome_offset: int | None = None,
+               hard_filter: bool = True,
+               weights: dict | None = None) -> dict:
+    """在 merge() 的结果之上套用 v2 四维评分，返回同一个 dict（原地加强）。
+
+    参数
+    ----
+    merged        : merge() 的返回值
+    delta_index   : allele_specific.build_delta_index() 的产物
+    target_pos    : 突变位点（hg38，1-based）
+    genome_offset : 输入序列的基因组 0-based 起点
+    hard_filter   : 是否只保留通过硬性过滤的 guide（默认 True）
+    weights       : 四维权重，缺省用 WEIGHTS_V2（等位基因特异性优先）
+
+    每个 row 会被加上：
+        allele_score / allele_delta / allele_region / allele_pos_from_pam
+        eff_score / cfd_score / dist_score
+        final_v2 / percentile / tier / rank_v2
+    """
+    w = dict(weights or WEIGHTS_V2)
+    total_w = sum(w.values()) or 1.0
+    delta_index = delta_index or {}
+    offset = genome_offset
+    if offset is None:
+        offset = merged.get("genome_offset")
+    seq_target = None if offset is None else int(target_pos) - int(offset)   # 1-based 序列坐标
+
+    rows = [r for r in merged.get("rows", []) if r.get("final_score") is not None]
+    if hard_filter:
+        rows = [r for r in rows if not r.get("filtered_by")]
+
+    for r in rows:
+        key = (normalize_strand(r.get("strand")), r.get("seq_pam_start"))
+        d = delta_index.get(key, {})
+        delta = d.get("delta")
+        seq_pam = r.get("seq_pam_start")
+
+        if seq_target is None or seq_pam is None:
+            det = {"index_in_23mer": None, "pos_from_pam": None, "region": "none",
+                   "region_label": AS.POSITION_TABLE["none"]["label"], "position_score": 0.0}
+            ass, extra = AS.combine(delta, "none")
+        else:
+            det = AS.position_detail(seq_pam, r.get("strand"), seq_target)
+            ass, extra = AS.combine(delta, det["region"])
+
+        # 四个维度（0-100）
+        r["allele_score"] = ass
+        r["allele_delta"] = None if delta is None else round(float(delta), 4)
+        r["allele_delta_100"] = extra.get("delta_100")
+        r["allele_delta_source"] = d.get("delta_source")
+        r["allele_region"] = det["region"]
+        r["allele_region_label"] = det["region_label"]
+        r["allele_pos_from_pam"] = det.get("pos_from_pam")
+        r["allele_covered"] = det["region"] != "none"
+        r["allele_downgraded"] = extra["downgraded"]
+
+        r["eff_score"] = None if r.get("doench16") is None else float(r["doench16"])
+        r["eff_score_mutant"] = d.get("efficiency_mut")
+        r["cfd_score"] = None if r.get("cfd_spec") is None else float(r["cfd_spec"])
+        covered = bool(r.get("covers_target"))
+        r["dist_score"] = distance_score_100(r.get("distance"), covered)
+
+        dims = {"allele": r["allele_score"], "doench16": r["eff_score"],
+                "cfd_spec": r["cfd_score"], "distance": r["dist_score"]}
+        parts, used, missing = 0.0, 0, []
+        for name, v in dims.items():
+            if v is None:
+                missing.append(name)
+                continue
+            parts += w.get(name, 0) * float(v)
+            used += w.get(name, 0)
+        r["final_v2"] = round(parts / used, 4) if used else None
+        r["v2_missing"] = missing
+        r["v2_weight_used"] = used
+
+    scored = [r for r in rows if r["final_v2"] is not None]
+    scored.sort(key=lambda r: (-r["final_v2"],
+                               r["distance"] if r["distance"] is not None else 1e9))
+    n = len(scored)
+    for rank, r in enumerate(scored, 1):
+        r["rank_v2"] = rank
+        pct = round(100.0 * (rank - 0.5) / n, 2) if n else None
+        r["percentile"] = pct                    # 排前百分之几（越小越好）
+        r["tier"] = tier_of(pct)
+        r["grade"] = r["tier"]                   # 兼容旧字段名
+
+    merged["rows_v2"] = scored
+    merged["model"] = MODEL_VERSION
+    merged["weights_v2"] = w
+    merged["total_weight_v2"] = total_w
+    merged["weight_presets"] = {
+        k: {"label": v["label"], "note": v["note"], "weights": v["weights"]}
+        for k, v in WEIGHT_PRESETS.items()
+    }
+    merged["preset"] = next((k for k, v in WEIGHT_PRESETS.items()
+                             if v["weights"] == w), "custom")
+    merged["allele_model"] = {
+        "mutation": AS.MUTATION,
+        "weights": AS.weights_json(),
+        "position_bands": AS.position_bands_json(),
+        "distance_bands_100": [{"lt": (None if u == float("inf") else u), "score": s}
+                               for u, s in DISTANCE_100_BANDS],
+        "coverage_bonus_100": COVERAGE_BONUS_100,
+    }
+    merged["count_v2"] = len(scored)
+    merged["allele_covered_count"] = sum(1 for r in scored if r.get("allele_covered"))
+    merged["tier_counts"] = {}
+    for r in scored:
+        merged["tier_counts"][r["tier"]] = merged["tier_counts"].get(r["tier"], 0) + 1
+    merged["grade_counts"] = merged["tier_counts"]      # 兼容旧字段
+    return merged
