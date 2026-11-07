@@ -1,7 +1,10 @@
 # SFTPC 基因 sgRNA 筛选工具
 
-输入一段碱基序列，自动去 CRISPOR 和 CHOPCHOP 两个网站抓数据，按三个数据加权排序，
+输入一段碱基序列，自动去 CRISPOR 和 CHOPCHOP 两个网站抓数据，按四个维度加权排序，
 用来筛 SFTPC 基因 CRISPR 编辑的 sgRNA。
+
+**两个模型并存**：v1 三维修（7:6:4，只看单条序列）、v2 四维修（35:30:25:10，
+多算一维「等位基因特异性」）。网页默认走 v2，开关关掉就退回 v1。
 
 背景是 SFTPC 的 **I73T 突变（c.218T>C）**，这个突变会导致儿童间质性肺病。
 挑 sgRNA 主要看三件事：切得动、切得准、切点离突变位点近。
@@ -24,9 +27,9 @@ python run_chopchop.py --seq "ACGT..." --genome hg38
 
 ---
 
-## 三个数据与权重
+## v1：三个数据与权重（7:6:4）
 
-权重来自 `四个数据的定义.txt`：
+权重来自 `四个数据的定义.txt`。这一套仍然完整保留，关掉第四维就回到它：
 
 | 权重 | 数据 | 来源 | 处理 |
 |---|---|---|---|
@@ -62,6 +65,36 @@ python run_chopchop.py --seq "ACGT..." --genome hg38
 
 ---
 
+## v2：第四维「等位基因特异性」（默认开启）
+
+v1 只看一条序列（参考基因组），所以它回答不了「这条 sgRNA 会不会把野生型也切了」。
+v2 多算一维：把**只改了一个碱基的突变型序列**再提交一次 CRISPOR，
+比较两条序列上的 Doench '16 得分。
+
+```
+Δ_raw  = Doench(突变型) − Doench(野生型)          // −100 … +100
+ΔScore = 100 × clamp(Δ_raw, 0, 20) / 20           // 20 分差算拉满
+
+位置分：突变落在 guide 的哪一段
+    PAM 区(21-23) 100 / Seed 区(1-8) 80 / 中间区(9-14) 40 / PAM 远端(15-20) 10
+
+ASS = 0.6 × ΔScore + 0.4 × 位置分
+ΔScore < 20（两条切得差不多）时整体 ×0.3
+```
+
+**四维权重**
+
+| 维度 | 权重 | 说明 |
+|---|---|---|
+| 等位基因特异性 (ASS) | **35** | 能不能区分突变型和野生型 |
+| 切割效率 | **30** | Doench '16 |
+| 脱靶特异性 | **25** | CFD Spec |
+| 突变距离 | **10** | 从 v1 的 23.5% 降下来，只当辅助参考 |
+
+> 只有识别序列（23mer）盖住突变位点的 guide 才可能有非零的 ASS。
+> 本案例 434 条里只有 7 条满足，所以综合分结构上上限约 65 分 ——
+> 等级因此改用**分位**（前 5% / 20% / 50% / 其余），不用固定分数线。
+
 ## 两个网站的 guide 怎么合并（负责人定的规则）
 
 按 PAM 起点 / 20nt spacer 对齐后分成三堆：
@@ -87,22 +120,33 @@ genome_utils.py           两个爬虫共用的坐标换算 / 序列定位
 
 sgweb/                    网页
     server.py             HTTP + JSON 接口
-    aggregate.py          三部分划分 + 加权排序
+    aggregate.py          两站合并 + v1 加权 + v2 四维重排
+    allele_specific.py    v2 第四维：ΔScore + 位置分
     index.html            前端（单文件，无外部依赖）
 
 crispor_scraper/          网站1 爬虫
-    client.py             CGI 接口：提交 / 探测 TSV / 下载
-    parser.py             guides TSV -> 结构化记录
-    datasets.py           两个数据的独立定义
-    distance.py           第三项（CRISPOR 版）
-    cache.py / pipeline.py / jsonio.py / cli.py
-
 chopchop_scraper/         网站2 爬虫
-    client.py             JSON API：POST / -> jobId
-    parser.py             results.tsv -> 结构化记录
-    distance.py           第三项（CHOPCHOP 版）
-    locate.py             序列定位（转发 genome_utils）
-    cache.py / pipeline.py / jsonio.py / cli.py
+deploy/                   systemd + nginx + 一键部署
+
+tools/                    取数与复现
+    acquire.py            抓野生型数据
+    acquire_mutant.py     抓突变型数据（构造"只改一个碱基"的序列）
+    acquire_case.py       通用版：任意基因 / 任意突变
+    run_all.py            一键复现全流程
+    md_to_docx.py         Markdown 转 Word
+
+analysis/                 分析与验证
+    score_v2.py           四维评分 + 排名表
+    weight_analysis.py    客观赋权 + 消融 + 稳定性
+    validate_external.py  用 CFD 独立模型做外部佐证
+    simulate_experiment.py 体外切割模拟
+    case_compare.py       换基因（HBB 负链）验证通用性
+
+tests/
+    test_web_v2.py        起服务 + 打接口 + 校字段
+
+data/                     抓取快照 + CFD 错配矩阵（提交，保证离线可复现）
+output/                   分析产物（每次跑都会重写，已 gitignore）
 ```
 
 ---
