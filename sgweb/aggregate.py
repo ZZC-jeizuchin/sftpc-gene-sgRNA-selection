@@ -154,7 +154,7 @@ def third_item_value(distance, pam_start, strand, target_pos,
     """第三项 = 距离分档 + 覆盖奖励。
 
     压住目标点 -> +bonus；没压住 -> -penalty。
-    最后夹在 [0, 1] 之间（负责人要求「不超过 1」）。
+    最后夹在 [0, 1] 之间（上限 1.0）。
     返回 (最终分, 分档分, 加减分)。
     """
     base = distance_band_score(distance)

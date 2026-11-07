@@ -36,7 +36,7 @@ DISTANCE_BANDS: list[tuple[float, float]] = [
 # 两个网站报的位置锚点不一样，正链差 20 bp（反链正好重合）：
 #   CHOPCHOP 报 23mer 最左端，CRISPOR 报 PAM 区间左端
 # SpCas9 切在 PAM 5' 侧 3 bp。用 int 约定（碱基当区间），距离是整数。
-CUT_CONVENTION = "int"           # "half" 或 "int"（负责人 2026-10-06 定：用 int）
+CUT_CONVENTION = "int"           # "half" 或 "int"（默认用 int，距离是整数更好读）
 
 CUT_FROM_PAM_BY_CONVENTION = {
     "half": {"+": -3.5, "-": 5.5},

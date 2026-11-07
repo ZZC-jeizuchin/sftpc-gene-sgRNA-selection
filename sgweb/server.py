@@ -197,7 +197,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
                 f"被刷掉的原因：{detail}。")
     else:
         merged.setdefault("notes", []).append(
-            "未开启硬性过滤（默认）。开启后会按负责人的 6 条规则筛掉不合格的 guide。")
+            "未开启硬性过滤（默认）。开启后会按 6 条硬性规则筛掉不合格的 guide。")
 
     # 定位情况
     off = genome_offset
@@ -236,7 +236,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
         n_avg = sum(1 for r in merged["rows"] if r.get("third_source") == "avg_part1")
         if n_avg:
             if third_mode == "average":
-                why = "按负责人规则（仅 CRISPOR 那批一律用「两站都有」的平均值）"
+                why = "按规则（仅 CRISPOR 那批一律用「两站都有」的平均值）"
             else:
                 why = "这些 guide 两个网站上对不上、算不出切点"
             merged.setdefault("notes", []).append(

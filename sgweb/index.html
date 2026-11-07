@@ -272,7 +272,7 @@
         <label for="thirdmode">仅 CRISPOR 那批的突变距离评分</label>
         <select id="thirdmode">
           <option value="auto" selected>能算就算，算不出用「两站都有」的平均值（推荐）</option>
-          <option value="average">一律用「两站都有」的平均值（负责人原话）</option>
+          <option value="average">一律用「两站都有」的平均值（严格按定义）</option>
           <option value="computed">只用真算值</option>
         </select>
         <div class="hint">只影响「仅 CRISPOR」的 sgRNA（它们没有 CHOPCHOP 的数据）。</div>
@@ -290,7 +290,7 @@
           <span class="switch"><i></i></span>
           <span class="switchtext" id="hardfilterText">关闭</span>
         </label>
-        <div class="hint">开启后按负责人的 6 条硬性规则筛掉不合格的 guide。</div>
+        <div class="hint">开启后按 6 条硬性规则筛掉不合格的 guide。</div>
       </div>
 
       <div class="field">
@@ -503,11 +503,11 @@ function render(d){
       ${v2 ? `<div title="23mer 覆盖突变位点的 guide：只有这些才可能区分突变型与野生型">
           <b>${d.allele_covered_count ?? '—'}</b>覆盖突变</div>` : ''}
       <div><b>${v2 ? '4 / 4' : (d.distance_available ? '3 / 3' : '2 / 3')}</b>可用数据</div>
-      <div title="【两站都有】CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA（= 负责人说的第一部分）">
+      <div title="【两站都有】CRISPOR 和 CHOPCHOP 两个网站都给出了这条 sgRNA（= 第一部分）">
         <b>${(d.parts && d.parts.part1) ?? '—'}</b>两站都有</div>
-      <div title="【仅 CRISPOR】只有 CRISPOR 给出了这条 sgRNA，CHOPCHOP 没有给出（= 负责人说的第二部分）">
+      <div title="【仅 CRISPOR】只有 CRISPOR 给出了这条 sgRNA，CHOPCHOP 没有给出（= 第二部分）">
         <b>${(d.parts && d.parts.part2) ?? '—'}</b>仅 CRISPOR</div>
-      <div title="【仅 CHOPCHOP】只有 CHOPCHOP 有、CRISPOR 没有，按负责人规则直接丢弃（= 负责人说的第三部分）">
+      <div title="【仅 CHOPCHOP】只有 CHOPCHOP 有、CRISPOR 没有，按规则直接丢弃（= 第三部分）">
         <b>${(d.parts && d.parts.part3_dropped) ?? '—'}</b>仅 CHOPCHOP(丢弃)</div>
       <div style="margin-left:auto;text-align:right">
         ${(d.steps||[]).filter(s=>s.ok).map(s=>`<a href="${s.url}" target="_blank" rel="noopener">${s.site === 'crispor_mut' ? 'CRISPOR(突变型)' : s.site} 原始结果 ↗</a>`).join('<br>')}
@@ -626,9 +626,9 @@ function render(d){
       // sgRNA 来源（这条 guide 是哪个网站给的）
       `<td>${
           r.part === 1
-            ? `<span class="tag" title="这条 sgRNA 由【两个网站共同给出】：CRISPOR 和 CHOPCHOP 都有。对应负责人说的「第一部分」。" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">两站都有</span>`
+            ? `<span class="tag" title="这条 sgRNA 由【两个网站共同给出】：CRISPOR 和 CHOPCHOP 都有。对应「第一部分」。" style="border-color:#bfe7d7;color:#0d8a5f;background:#f0fbf6">两站都有</span>`
             : (r.part === 2
-                ? `<span class="tag" title="这条 sgRNA【只有 CRISPOR 有，CHOPCHOP 没有给出】。对应负责人说的「第二部分」。" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">仅 CRISPOR</span>`
+                ? `<span class="tag" title="这条 sgRNA【只有 CRISPOR 有，CHOPCHOP 没有给出】。对应「第二部分」。" style="border-color:#c7d9f5;color:#2563a8;background:#f0f5ff">仅 CRISPOR</span>`
                 : '<span class="tag">—</span>')
         }</td>`,
       // 突变距离评分的来源（这个分数是怎么来的）
@@ -664,7 +664,7 @@ function render(d){
           <th class="num">CFD Spec<br><span style="font-weight:400;text-transform:none">x${w.cfd_spec} /100</span></th>
           <th class="num" title="切割位点到目标位点的碱基距离">突变距离<br><span style="font-weight:400;text-transform:none">切点->目标</span></th>
           <th class="num">突变距离评分<br><span style="font-weight:400;text-transform:none">x${w.distance} 分档+/-覆盖</span></th>
-          <th class="num" title="这条 sgRNA 的 20nt 区间有没有盖住突变位点 chr8:22163096（负责人《评分规则》要求输出的是/否）">覆盖突变位点</th>
+          <th class="num" title="这条 sgRNA 的 20nt 区间有没有盖住突变位点 chr8:22163096（《评分规则》要求输出的是/否）">覆盖突变位点</th>
           ${v2 ? `<th class="num" title="双序列切割效率差：Doench'16(突变型) − Doench'16(野生型)。第二行是归一化到 0-100 的 ΔScore">
                     ΔScore<br><span style="font-weight:400;text-transform:none">突变型−野生型</span></th>
                   <th class="num" title="突变位点落在 23mer 的哪个功能区：PAM 区 / Seed 区 / 中间区 / PAM 远端 / 不覆盖">
@@ -752,7 +752,7 @@ function renderFilterPop(){
     `<tr><td>${n}</td><td>${r}<div class="why">剔除条件：${w}</div>
      <div class="note">${note}</div></td></tr>`).join('');
   $('filterPop').innerHTML =
-    `<h4>硬性过滤规则 <em>负责任务书《硬性过滤规则》· 共 6 条</em></h4>
+    `<h4>硬性过滤规则 <em>依据《硬性过滤规则》· 共 6 条</em></h4>
      <table><thead><tr><th>指标</th><th>规则</th></tr></thead><tbody>${rows}</tbody></table>
      <div class="note" style="margin-top:8px">开启后，任一条不满足的 sgRNA 会被直接剔除，不参与评分与排序。</div>`;
 }
