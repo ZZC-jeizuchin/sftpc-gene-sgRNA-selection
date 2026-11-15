@@ -308,12 +308,38 @@
       </div>
 
       <div class="field" id="presetField">
-        <label for="preset">权重预设</label>
+        <label for="preset">权重设置</label>
         <select id="preset">
-          <option value="allele_first">等位基因特异性优先（35 / 30 / 25 / 10）</option>
-          <option value="balanced">均衡 · CRITIC 参考（15 / 39 / 33 / 13）</option>
+          <option value="allele_first">预设 A：等位基因特异性优先（35 / 30 / 25 / 10）</option>
+          <option value="balanced">预设 B：均衡 · CRITIC 参考（15 / 39 / 33 / 13）</option>
+          <option value="custom">自定义（手动调节）</option>
         </select>
-        <div class="hint">两套权重都保留，可以现场切换对比排序变化 —— 这本身就是答辩材料。</div>
+      </div>
+
+      <div class="field" id="weightTuner">
+        <label>自定义权重</label>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+          <span style="flex:0 0 76px;font-size:12px;color:#5b6472">等位特异性</span>
+          <input type="range" id="wAllele" min="0" max="100" value="35" style="flex:1;min-width:56px">
+          <b id="wAlleleVal" style="width:24px;text-align:right;font-size:12px">35</b>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+          <span style="flex:0 0 76px;font-size:12px;color:#5b6472">切割效率</span>
+          <input type="range" id="wEff" min="0" max="100" value="30" style="flex:1;min-width:56px">
+          <b id="wEffVal" style="width:24px;text-align:right;font-size:12px">30</b>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+          <span style="flex:0 0 76px;font-size:12px;color:#5b6472">脱靶特异性</span>
+          <input type="range" id="wCfd" min="0" max="100" value="25" style="flex:1;min-width:56px">
+          <b id="wCfdVal" style="width:24px;text-align:right;font-size:12px">25</b>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+          <span style="flex:0 0 76px;font-size:12px;color:#5b6472">突变距离</span>
+          <input type="range" id="wDist" min="0" max="100" value="10" style="flex:1;min-width:56px">
+          <b id="wDistVal" style="width:24px;text-align:right;font-size:12px">10</b>
+        </div>
+        <div class="hint" id="weightNormHint">归一化后：35.0% / 30.0% / 25.0% / 10.0%</div>
+        <div class="hint">四个数会自动归一化，不需要凑成 100。拖动滑块后表格会立即按新权重重排，不必重新取数。</div>
       </div>
 
       <div class="field">
@@ -323,17 +349,17 @@
       </div>
 
       <div class="field">
-        <label>权重比</label>
+        <label>当前生效权重</label>
         <div class="weights" id="weightsV2">
-          <div><b>35</b><span>等位基因特异性</span></div>
-          <div><b>30</b><span>Doench '16</span></div>
-          <div><b>25</b><span>CFD Spec</span></div>
-          <div><b>10</b><span>突变距离</span></div>
+          <div><b id="wbAllele">35</b><span>等位基因特异性</span></div>
+          <div><b id="wbEff">30</b><span>Doench '16</span></div>
+          <div><b id="wbCfd">25</b><span>CFD Spec</span></div>
+          <div><b id="wbDist">10</b><span>突变距离</span></div>
         </div>
         <div class="weights" id="weightsV1" style="display:none">
-          <div><b>7</b><span>Doench '16</span></div>
-          <div><b>6</b><span>CFD Spec</span></div>
-          <div><b>4</b><span>突变距离评分</span></div>
+          <div><b id="wb1Eff">41</b><span>Doench '16</span></div>
+          <div><b id="wb1Cfd">35</b><span>CFD Spec</span></div>
+          <div><b id="wb1Dist">24</b><span>突变距离</span></div>
         </div>
         <div class="hint" id="weightsHint">四维各自 0–100 分，加权求和仍是满分 100。</div>
       </div>
@@ -460,7 +486,167 @@ function renderError(data){
     <div class="big">!</div>${esc(data.error || '失败')}</div>`;
 }
 
+/* ================= 权重调节 =================
+ * 四个维度各自 0–100 分是固定的（由模型和数据源决定），
+ * 真正由使用者决定的是「四者之间的相对权重」。
+ * 因此把权重做成可调参数：拖动滑块即时重排，不需要重新取数。
+ */
+let LAST_DATA = null;
+
+const W_KEYS = ['allele', 'doench16', 'cfd_spec', 'distance'];
+const W_IDS = [
+  ['allele',   'wAllele', 'wAlleleVal', 'wbAllele'],
+  ['doench16', 'wEff',    'wEffVal',    'wbEff'],
+  ['cfd_spec', 'wCfd',    'wCfdVal',    'wbCfd'],
+  ['distance', 'wDist',   'wDistVal',   'wbDist'],
+];
+const PRESET_W = {
+  allele_first: { allele: 35, doench16: 30, cfd_spec: 25, distance: 10 },
+  balanced:     { allele: 15, doench16: 39, cfd_spec: 33, distance: 13 },
+};
+
+function readWeights(){
+  const o = {};
+  for (const [k, sid] of W_IDS){
+    const el = $(sid);
+    o[k] = el ? Math.max(0, Number(el.value) || 0) : 0;
+  }
+  return o;
+}
+
+function normWeights(raw, fallback){
+  let s = 0;
+  for (const k of W_KEYS) s += Math.max(0, Number(raw && raw[k]) || 0);
+  const src = s > 0 ? raw : (fallback || PRESET_W.allele_first);
+  let fs = 0;
+  for (const k of W_KEYS) fs += Math.max(0, Number(src[k]) || 0) || 0;
+  const o = {};
+  for (const k of W_KEYS) o[k] = fs > 0 ? 100 * (Math.max(0, Number(src[k]) || 0)) / fs : 25;
+  return o;
+}
+
+function tierOf(p){
+  if (p === null || p === undefined) return null;
+  if (p <= 5) return '优先推荐';
+  if (p <= 20) return '推荐';
+  if (p <= 50) return '可选';
+  return '备选';
+}
+
+/* 按给定权重在前端重排；缺某一维时按参与维度的权重重新归一化 */
+function rerank(rows, w){
+  const dims = [['allele', 'allele_score'], ['doench16', 'eff_score'],
+                ['cfd_spec', 'cfd_score'], ['distance', 'dist_score']];
+  const scored = [];
+  for (const r of rows){
+    let num = 0, den = 0;
+    for (const [k, f] of dims){
+      const v = r[f];
+      if (v === null || v === undefined) continue;
+      num += (w[k] || 0) * Number(v);
+      den += (w[k] || 0);
+    }
+    if (den > 0) scored.push({ r: r, s: num / den });
+  }
+  scored.sort((a, b) => b.s - a.s);
+  const n = scored.length;
+  return scored.map((x, i) => {
+    const rank = i + 1;
+    const pct = n ? Math.round(10000 * (rank - 0.5) / n) / 100 : null;
+    const t = tierOf(pct);
+    return Object.assign({}, x.r, {
+      final_v2: Math.round(x.s * 10000) / 10000,
+      rank_v2: rank, percentile: pct, tier: t, grade: t,
+    });
+  });
+}
+
+/* 三维修（v1）：等位基因特异性不参与，按其余三维在前端重排。
+ * v1 各项在服务端已归一化到 0–1，这里乘以权重后仍落到 0–1，
+ * 与原有的 final_score 口径一致，便于和旧结果对照。 */
+function rerankV1(rows, w){
+  const dims = [['doench16', 'doench16_mapped'],
+                ['cfd_spec', 'cfd_spec_normalized'],
+                ['distance', 'third_item']];
+  const scored = [];
+  for (const r of rows){
+    let num = 0, den = 0;
+    for (const [k, f] of dims){
+      const v = r[f];
+      if (v === null || v === undefined) continue;
+      num += (w[k] || 0) * Number(v);
+      den += (w[k] || 0);
+    }
+    if (den > 0) scored.push({ r: r, s: num / den });
+  }
+  scored.sort((a, b) => b.s - a.s);
+  const n = scored.length;
+  return scored.map((x, i) => {
+    const rank = i + 1;
+    const pct = n ? Math.round(10000 * (rank - 0.5) / n) / 100 : null;
+    const t = tierOf(pct);
+    return Object.assign({}, x.r, {
+      final_score: Math.round(x.s * 100000) / 100000,
+      rank: rank, percentile: pct, tier: t, grade: t,
+    });
+  });
+}
+
+function syncWeightUI(){
+  const raw = readWeights();
+  const n = normWeights(raw, null);
+  for (const [k, , vid, bid] of W_IDS){
+    const a = $(vid); if (a) a.textContent = Math.round(raw[k]);
+    const b = $(bid); if (b) b.textContent = n[k].toFixed(0);
+  }
+  // 三维修的三个显示格（按去掉等位基因后重新归一化）
+  const rest = (n.doench16 + n.cfd_spec + n.distance) || 1;
+  const p1 = 100 * n.doench16 / rest, p2 = 100 * n.cfd_spec / rest, p3 = 100 * n.distance / rest;
+  const e1 = $('wb1Eff'), e2 = $('wb1Cfd'), e3 = $('wb1Dist');
+  if (e1) e1.textContent = p1.toFixed(0);
+  if (e2) e2.textContent = p2.toFixed(0);
+  if (e3) e3.textContent = p3.toFixed(0);
+
+  const hint = $('weightNormHint');
+  if (hint){
+    const on = $('allele') && $('allele').checked;
+    hint.textContent = on
+      ? `归一化后：${n.allele.toFixed(1)}% / ${n.doench16.toFixed(1)}% / ` +
+        `${n.cfd_spec.toFixed(1)}% / ${n.distance.toFixed(1)}%`
+      : `三维修归一化后：${p1.toFixed(1)}% / ${p2.toFixed(1)}% / ${p3.toFixed(1)}%（等位基因特异性不参与）`;
+  }
+}
+
+function setWeights(w){
+  for (const [k, sid] of W_IDS){
+    const el = $(sid); if (el) el.value = w[k];
+  }
+  syncWeightUI();
+}
+
+function bindWeightUI(){
+  const sel = $('preset');
+  const onSlide = () => {
+    if (sel && sel.value !== 'custom') sel.value = 'custom';
+    syncWeightUI();
+    if (LAST_DATA) render(LAST_DATA);
+  };
+  for (const [, sid] of W_IDS){
+    const el = $(sid);
+    if (el) el.addEventListener('input', onSlide);
+  }
+  if (sel){
+    sel.addEventListener('change', () => {
+      const p = PRESET_W[sel.value];
+      if (p) setWeights(p);
+      if (LAST_DATA) render(LAST_DATA);
+    });
+  }
+  syncWeightUI();
+}
+
 function render(d){
+  LAST_DATA = d;
   // 步骤状态
   const lines = (d.steps || []).map(s => s.ok
     ? {text: `${s.site === 'crispor' ? '网站1 CRISPOR' : '网站2 CHOPCHOP'}：${s.n_guides} 条 guide${s.from_cache ? '（缓存）' : ''}`, kind:'ok'}
@@ -468,16 +654,19 @@ function render(d){
   lines.push({text:`耗时 ${d.elapsed_sec}s · 合并后 ${d.count} 条`, kind:'ok'});
   setStatus(lines, '完成');
 
-  const rows = d.rows || [];
+  // ---- v2 四维模型（等位基因特异性 / 效率 / 脱靶 / 距离），每维 0-100 ----
+  const v2 = d.model === 'v2';
+  const subEl = $('subtitle');
+  if (subEl) subEl.textContent = 'CRISPOR + CHOPCHOP · '
+    + (v2 ? '四维加权排序' : '三数据加权排序');
+  const wv2 = normWeights(readWeights(), d.weights_v2 || { allele: 35, doench16: 30, cfd_spec: 25, distance: 10 });
+  // 两种模式都在前端按当前滑块重排，不必重新取数；
+  // v2 用四维，v1 只用后三维（等位基因特异性不参与）
+  const rows = v2 ? rerank(d.rows || [], wv2) : rerankV1(d.rows || [], wv2);
   const raw = parseInt($('topn').value, 10) || 5;
   const N = Math.max(1, Math.min(50, raw));
   const top = rows[0];
   const w = d.weights;
-  // ---- v2 四维模型（等位基因特异性 / 效率 / 脱靶 / 距离），每维 0-100 ----
-  const v2 = d.model === 'v2';
-  const subEl = $('subtitle');
-  if (subEl) subEl.textContent = 'CRISPOR + CHOPCHOP · ' + (v2 ? '四维加权排序' : '三数据加权排序');
-  const wv2 = d.weights_v2 || { allele: 35, doench16: 30, cfd_spec: 25, distance: 10 };
   const tot = r => (v2 ? Number(r.final_v2 ?? 0) : Number(r.final_score ?? 0) * 100);
   const totTxt = r => (v2 ? fmt(r.final_v2, 2) : pts(r.final_score));
   // v2 用 rank_v2；否则用 v1 的 rank
@@ -683,7 +872,7 @@ function render(d){
   document.querySelector('#result > div[style*="overflow"]')?.scrollTo(0,0);
   const inline = $('topnInline');
   bindWarnActions();
-  bindExportCsv(d);
+  bindExportCsv(d, rows);
   if (inline) inline.addEventListener('change', () => {
     $('topn').value = inline.value;
     render(d);
@@ -691,18 +880,22 @@ function render(d){
   $('pill').textContent = '完成';
 }
 
-/* 导出当前排序为 CSV（纯前端，不经过服务器） */
-function bindExportCsv(d){
+/* 导出当前排序为 CSV（纯前端，不经过服务器；权重以当前滑块为准）
+ * 用 onclick 而不是 addEventListener：render() 会被滑块反复触发，
+ * 用后者会越绑越多，导出时会一次下载好几份。 */
+function bindExportCsv(d, viewRows){
   const b = document.getElementById('exportCsv');
   if (!b) return;
-  b.addEventListener('click', () => {
-    const rows = d.rows || [];
+  b.onclick = () => {
+    const rows = viewRows || d.rows || [];
     const v2 = d.model === 'v2';
     const rk = r => (v2 ? (r.rank_v2 ?? r.rank) : r.rank);
+    const wn = normWeights(readWeights(), d.weights_v2);
     const head = ['排名','sgRNA(20nt+PAM)','链','切点(基因组)','距突变bp','覆盖突变',
                   '突变位置','DoenchWT','DoenchMut','Δraw','ΔScore',
                   '等位基因特异性','切割效率','脱靶特异性','突变距离分',
-                  '综合分','分位(%)','等级'];
+                  '综合分','分位(%)','等级',
+                  '权重_等位','权重_效率','权重_脱靶','权重_距离'];
     const cell = x => (x === null || x === undefined ? '' : String(x).replace(/[,"\n]/g, ' '));
     const lines = [head.join(',')];
     for (const r of rows) {
@@ -711,7 +904,8 @@ function bindExportCsv(d){
         r.eff_score, r.eff_score_mutant, r.allele_delta, r.allele_delta_100,
         r.allele_score, r.eff_score, r.cfd_score, r.dist_score,
         v2 ? r.final_v2 : (r.final_score === null || r.final_score === undefined ? '' : (r.final_score*100).toFixed(2)),
-        r.percentile, r.tier || r.grade].map(cell).join(','));
+        r.percentile, r.tier || r.grade,
+        wn.allele.toFixed(1), wn.doench16.toFixed(1), wn.cfd_spec.toFixed(1), wn.distance.toFixed(1)].map(cell).join(','));
     }
     const blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
     const a = document.createElement('a');
@@ -720,7 +914,7 @@ function bindExportCsv(d){
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
-  });
+  };
 }
 
 /* 示例序列（hg38 chr8:22162801-22163400，含 c.218） */
@@ -752,7 +946,7 @@ function renderFilterPop(){
     `<tr><td>${n}</td><td>${r}<div class="why">剔除条件：${w}</div>
      <div class="note">${note}</div></td></tr>`).join('');
   $('filterPop').innerHTML =
-    `<h4>硬性过滤规则 <em>依据《硬性过滤规则》· 共 6 条</em></h4>
+    `<h4>硬性过滤规则 <em>《硬性过滤规则》· 共 6 条</em></h4>
      <table><thead><tr><th>指标</th><th>规则</th></tr></thead><tbody>${rows}</tbody></table>
      <div class="note" style="margin-top:8px">开启后，任一条不满足的 sgRNA 会被直接剔除，不参与评分与排序。</div>`;
 }
@@ -804,22 +998,40 @@ function hidePop(){ $('filterInfo').classList.remove('on'); $('filterPop').class
 
 $('run').addEventListener('click', analyze);
 
-/* v2 开关：文案 + 权重比展示 */
+/* v2 开关：文案 + 权重面板展示 */
 (function bindAlleleUI(){
   const cb = $('allele');
   if (!cb) return;
+  /* 两种模式下权重面板都保留。
+   * 关闭等位基因特异性时，该维度不参与计算，只把它的滑块置灰，
+   * 其余三维仍可调节（默认回到 41 : 35 : 24，与原 7:6:4 一致）。 */
   const sync = () => {
-    $('alleleText').textContent = cb.checked ? '开启' : '关闭';
-    $('weightsV2').style.display = cb.checked ? '' : 'none';
-    $('weightsV1').style.display = cb.checked ? 'none' : '';
-    const pf = $('presetField');
-    if (pf) pf.style.display = cb.checked ? '' : 'none';
-    $('weightsHint').textContent = cb.checked
+    const on = cb.checked;
+    $('alleleText').textContent = on ? '开启' : '关闭';
+    $('weightsV2').style.display = on ? '' : 'none';
+    $('weightsV1').style.display = on ? 'none' : '';
+    $('weightsHint').textContent = on
       ? '四维各自 0–100 分，加权求和仍是满分 100。'
-      : '三维修：0–1 加权后 ×100。';
+      : '三维修：等位基因特异性不参与计算，仅调节其余三维。';
+
+    const a = $('wAllele');
+    if (a){
+      a.disabled = !on;
+      const row = a.parentElement;
+      if (row) row.style.opacity = on ? '1' : '0.35';
+    }
+    const row4 = $('wAlleleVal');
+    if (row4) row4.style.opacity = on ? '1' : '0.35';
+
+    setWeights(on ? PRESET_W.allele_first
+                  : { allele: 0, doench16: 41, cfd_spec: 35, distance: 24 });
   };
-  cb.addEventListener('change', sync); sync();
+  cb.addEventListener('change', () => { sync(); if (LAST_DATA) render(LAST_DATA); });
+  sync();
 })();
+
+/* 权重滑块初始化 */
+bindWeightUI();
 
 /* 打开 #last 可直接看上次结果（刷新页面不丢） */
 if (location.hash === '#last'){
