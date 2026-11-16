@@ -249,6 +249,18 @@
 
       <div class="field row">
         <div>
+          <label for="mutRef">参考碱基</label>
+          <input type="text" id="mutRef" value="T" maxlength="1">
+        </div>
+        <div>
+          <label for="mutAlt">突变碱基</label>
+          <input type="text" id="mutAlt" value="C" maxlength="1">
+        </div>
+      </div>
+      <div class="hint" style="margin-top:-6px">换基因时按实际变异填，例如 BRAF V600E 填 A → T。仅影响等位基因特异性评分。</div>
+
+      <div class="field row">
+        <div>
           <label for="goff">序列基因组起点</label>
           <input type="text" id="goff" placeholder="自动">
         </div>
@@ -455,6 +467,8 @@ async function analyze(){
         third_mode: $('thirdmode').value,
         hard_filter: $('hardfilter').checked,
         allele: $('allele').checked,
+        mut_ref: (($('mutRef') && $('mutRef').value.trim()) || 'T').toUpperCase(),
+        mut_alt: (($('mutAlt') && $('mutAlt').value.trim()) || 'C').toUpperCase(),
         preset: $('preset') ? $('preset').value : 'allele_first',
         top_n: Math.max(1, Math.min(50, parseInt($('topn').value, 10) || 5)),
       })
@@ -861,7 +875,7 @@ function render(d){
                   <th class="num" title="等位基因特异性 = 0.6×ΔScore + 0.4×位置分；ΔScore&lt;20 时整体 ×0.3">
                     等位基因特异性<br><span style="font-weight:400;text-transform:none">x${wv2.allele}</span></th>` : ''}
           <th class="num">加权总分<br><span style="font-weight:400;text-transform:none">${
-              v2 ? `v2 四维/100` : `/${d.total_weight}（满分 100）`}</span></th>
+              v2 ? `v2 四维/100` : `三维修/100（当前权重 ${(wv2.doench16 + wv2.cfd_spec + wv2.distance).toFixed(0)}）`}</span></th>
           <th title="这条 sgRNA 是哪些网站给出的：两站都有 = CRISPOR 和 CHOPCHOP 都给出了；仅 CRISPOR = CHOPCHOP 没给出">sgRNA 来源</th>
           <th title="突变距离评分是怎么来的：实算 = 用这条 sgRNA 自己的切点算的；平均值顶替 = 借用了「两站都有」那批的平均值">突变距离评分来源</th>
         </tr></thead>
