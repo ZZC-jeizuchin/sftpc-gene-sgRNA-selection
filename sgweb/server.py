@@ -40,6 +40,7 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
                  locate_window: tuple[str, int, int] | None = None,
                  hard_filter: bool = False,
                  allele: bool = False,
+                 mut_ref: str | None = None, mut_alt: str | None = None,
                  preset: str = "allele_first") -> dict:
     """跑两个爬虫 + 合并加权。任一网站失败都能降级出结果。"""
     def say(msg):
@@ -121,11 +122,13 @@ def run_pipeline(sequence: str, genome: str, pam: str, target_pos: int,
             if off is None:
                 raise RuntimeError("拿不到序列的基因组起点，无法定位突变位点")
             idx = AS.mutation_index(sequence, off, target_pos)
-            if not AS.check_ref(sequence, idx):
+            ref = (mut_ref or AS.MUTATION["ref"]).upper()
+            alt = (mut_alt or AS.MUTATION["alt"]).upper()
+            if not AS.check_ref(sequence, idx, ref):
                 raise RuntimeError(
                     f"参考碱基不符：第 {idx} 位是 {sequence[idx]}，"
-                    f"突变记录要求 {AS.MUTATION['ref']}")
-            mut_seq = AS.build_mutant(sequence, idx)
+                    f"突变记录要求 {ref}")
+            mut_seq = AS.build_mutant(sequence, idx, ref, alt)
 
             say("网站1b CRISPOR(突变型)：提交中…")
             from crispor_scraper import CrisporInput, fetch as crispor_fetch
@@ -368,6 +371,8 @@ class Handler(BaseHTTPRequestHandler):
                                locate_window=loc_win,
                                hard_filter=hard_filter,
                                allele=allele,
+                               mut_ref=(params.get("mut_ref") or None),
+                               mut_alt=(params.get("mut_alt") or None),
                                preset=preset)
         except Exception:
             self._json(500, {"ok": False, "error": "内部错误：\n" + traceback.format_exc()})
